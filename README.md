@@ -12,8 +12,6 @@ Oracle Cloud Data Platform Foundation Associate: https://catalog-education.oracl
 
 OCI AI Foundations Associate: https://catalog-education.oracle.com/pls/certview/sharebadge?id=2DF1ED1BBD49D2BF7D0AAAAA6C038CB5E8FD3AB33653946126CCB1C6DDCA1499
 
-IM 2 PROJECT (NeuLibrary):https://studio.firebase.google.com/studio-1241376197
-
 Skillsets: UI/UX Designer (Figma)
            Sql (Databases)
            Java
