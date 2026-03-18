@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>NEU – Library Visitor Log</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+    :root{
+      --primary:#3960AB; --primary-light:rgba(57,96,171,.1); --primary-fg:#fff;
+      --accent:#3CC2DD; --accent-light:rgba(60,194,221,.12);
+      --bg:#E8EDF4; --card:#fff; --border:#D9E2EE;
+      --text:#1a2642; --muted:#64748b; --muted-bg:#f1f5f9;
+      --destructive:#ef4444; --destructive-light:rgba(239,68,68,.08);
+      --radius:12px; --shadow:0 1px 3px rgba(0,0,0,.08),0 4px 12px rgba(57,96,171,.06);
+      --shadow-lg:0 4px 24px rgba(57,96,171,.12),0 1px 4px rgba(0,0,0,.06);
+    }
+    html,body{min-height:100%;font-family:'Space Grotesk',sans-serif;background:var(--bg);color:var(--text);}
+    a{text-decoration:none;color:inherit;}
+    button{font-family:inherit;cursor:pointer;}
+
+    /* layout */
+    .page{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px;}
+    .inner{max-width:860px;width:100%;display:grid;grid-template-columns:1fr 1fr;gap:48px;align-items:center;}
+    @media(max-width:680px){.inner{grid-template-columns:1fr;gap:32px;}.right{order:-1;}}
+
+    /* left column */
+    .brand{display:flex;align-items:center;gap:20px;margin-bottom:20px;}
+    .neu-logo{width:80px;height:80px;background:var(--primary);border-radius:20px;display:flex;align-items:center;justify-content:center;font-size:26px;font-weight:700;color:#fff;letter-spacing:-1px;flex-shrink:0;box-shadow:0 4px 18px rgba(57,96,171,.35);}
+    .brand-text h1{font-size:64px;font-weight:700;color:var(--primary);letter-spacing:-3px;line-height:1;}
+    .brand-text p{font-size:18px;color:var(--muted);font-weight:500;margin-top:2px;}
+    .tagline{font-size:14px;color:var(--muted);max-width:320px;line-height:1.6;margin-bottom:28px;}
+
+    /* RFID pulse box */
+    .rfid-box{background:var(--primary-light);border:2px dashed rgba(57,96,171,.25);border-radius:20px;padding:20px 24px;display:flex;align-items:center;gap:16px;margin-bottom:20px;animation:subtlePulse 2.5s ease-in-out infinite;}
+    @keyframes subtlePulse{0%,100%{background:var(--primary-light);}50%{background:rgba(57,96,171,.16);}}
+    .rfid-icon{width:48px;height:48px;background:var(--primary-light);border-radius:12px;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+    .rfid-icon svg{width:24px;height:24px;color:var(--primary);}
+    .rfid-box h3{font-size:14px;font-weight:700;color:var(--primary);}
+    .rfid-box p{font-size:12px;color:var(--muted);}
+
+    /* buttons */
+    .btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;font-family:inherit;font-size:15px;font-weight:600;border-radius:50px;padding:13px 28px;cursor:pointer;transition:all .2s;border:none;}
+    .btn-primary{background:var(--primary);color:#fff;box-shadow:0 2px 12px rgba(57,96,171,.3);}
+    .btn-primary:hover{background:#2d4f91;box-shadow:0 4px 20px rgba(57,96,171,.4);}
+    .btn-outline{background:transparent;color:var(--primary);border:2px solid var(--primary);}
+    .btn-outline:hover{background:var(--primary-light);}
+    .btn-lg{font-size:16px;padding:15px 32px;}
+    .btn-icon{width:20px;height:20px;}
+    .btn-row{display:flex;flex-wrap:wrap;gap:12px;margin-top:4px;}
+
+    /* signed in card */
+    .user-card{display:flex;align-items:center;gap:14px;background:var(--card);border-radius:18px;padding:14px 18px;box-shadow:var(--shadow);border:1px solid var(--border);}
+    .user-av{width:46px;height:46px;border-radius:50%;background:linear-gradient(135deg,var(--primary),var(--accent));display:flex;align-items:center;justify-content:center;font-weight:700;font-size:18px;color:#fff;flex-shrink:0;}
+    .user-av img{width:100%;height:100%;border-radius:50%;object-fit:cover;}
+    .user-meta{flex:1;overflow:hidden;}
+    .user-meta strong{font-size:14px;font-weight:600;display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+    .user-meta span{font-size:12px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:block;}
+    .user-meta .admin-tag{font-size:10px;font-weight:700;color:var(--primary);text-transform:uppercase;letter-spacing:.5px;}
+    .btn-ghost{background:transparent;border:none;padding:8px;border-radius:8px;color:var(--muted);cursor:pointer;transition:.2s;}
+    .btn-ghost:hover{color:var(--destructive);background:var(--destructive-light);}
+    .btn-ghost svg{width:18px;height:18px;}
+
+    /* right column – feature cards */
+    .right{display:flex;flex-direction:column;gap:14px;}
+    .feat-card{background:var(--card);border-radius:20px;padding:24px;box-shadow:var(--shadow-lg);border:1px solid var(--border);transition:.2s;}
+    .feat-card:hover{transform:translateY(-2px);box-shadow:0 8px 32px rgba(57,96,171,.14);}
+    .feat-icon{width:48px;height:48px;border-radius:14px;display:flex;align-items:center;justify-content:center;margin-bottom:14px;}
+    .feat-icon.blue{background:var(--primary-light);}
+    .feat-icon.teal{background:var(--accent-light);}
+    .feat-icon svg{width:24px;height:24px;}
+    .feat-icon.blue svg{color:var(--primary);}
+    .feat-icon.teal svg{color:var(--accent);}
+    .feat-card h3{font-size:16px;font-weight:700;margin-bottom:6px;}
+    .feat-card p{font-size:13px;color:var(--muted);line-height:1.5;}
+
+    /* notice */
+    .notice{font-size:11px;color:var(--muted);padding-left:6px;}
+    .notice strong{color:var(--primary);}
+
+    /* spinner */
+    .spin{display:inline-block;width:18px;height:18px;border:2.5px solid rgba(255,255,255,.4);border-top-color:#fff;border-radius:50%;animation:spin .6s linear infinite;}
+    @keyframes spin{to{transform:rotate(360deg);}}
+  </style>
+</head>
+<body>
+<div class="page">
+  <div class="inner">
+
+    <!-- LEFT -->
+    <div class="left">
+      <div class="brand">
+        <div class="neu-logo">NEU</div>
+        <div class="brand-text">
+          <h1>NEU</h1>
+          <p>Library Visitor Log</p>
+        </div>
+      </div>
+      <p class="tagline">Streamlined visitor management and usage analytics for New Era University.</p>
+
+      <!-- RFID scanner ready box -->
+      <div class="rfid-box" id="rfidBox">
+        <div class="rfid-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 6v16l7-4 8 4 7-4V2l-7 4-8-4-7 4z"/><path d="M8 2v16"/><path d="M16 6v16"/></svg>
+        </div>
+        <div>
+          <h3>Tap your ID to enter</h3>
+          <p>RFID Scanning Enabled</p>
+        </div>
+      </div>
+
+      <!-- NOT signed in -->
+      <div id="authSection">
+        <div class="btn-row">
+          <a href="terminal.html" class="btn btn-primary btn-lg">
+            <svg class="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/></svg>
+            Visitor Terminal
+          </a>
+          <a href="admin.html" class="btn btn-outline btn-lg">
+            <svg class="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+            Admin Dashboard
+          </a>
+        </div>
+        <p class="notice" style="margin-top:10px;">Use your <strong>@neu.edu.ph</strong> account only.</p>
+      </div>
+    </div>
+
+    <!-- RIGHT -->
+    <div class="right">
+      <div class="feat-card">
+        <div class="feat-icon teal">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/></svg>
+        </div>
+        <h3>Smart Check-in</h3>
+        <p>Fast check-in for students and faculty using School ID or RFID card scanning.</p>
+      </div>
+      <div class="feat-card">
+        <div class="feat-icon blue">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><path d="M14 14h3v3M17 14h3M14 17h3v3"/></svg>
+        </div>
+        <h3>Insights & Data</h3>
+        <p>Detailed statistics and exportable reports for library administrators.</p>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<script src="data.js"></script>
+<script>
+  // RFID global listener (redirects to terminal)
+  let rfidBuf = '', rfidTimer;
+  document.addEventListener('keydown', e => {
+    if (e.target instanceof HTMLInputElement) return;
+    const now = Date.now();
+    if (!rfidBuf._t || now - rfidBuf._t > 80) rfidBuf = '';
+    rfidBuf._t = now;
+    if (e.key === 'Enter') {
+      if (rfidBuf.length >= 4) window.location.href = `terminal.html?rfid=${encodeURIComponent(rfidBuf)}`;
+      rfidBuf = '';
+    } else if (e.key.length === 1) rfidBuf += e.key;
+  });
+</script>
+</body>
+</html>

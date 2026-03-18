@@ -1,0 +1,490 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>NEU – Visitor Terminal</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+    :root{
+      --primary:#3960AB; --primary-light:rgba(57,96,171,.1); --primary-fg:#fff;
+      --accent:#3CC2DD; --accent-light:rgba(60,194,221,.12);
+      --bg:#F1F5F9; --card:#fff; --border:#e2e8f0;
+      --text:#0f172a; --muted:#64748b; --muted-bg:#f1f5f9;
+      --destructive:#ef4444; --destructive-light:rgba(239,68,68,.08);
+      --success:#10b981; --success-light:rgba(16,185,129,.1);
+      --radius:16px; --shadow:0 1px 3px rgba(0,0,0,.06),0 8px 24px rgba(57,96,171,.08);
+      --shadow-xl:0 8px 40px rgba(57,96,171,.15),0 1px 4px rgba(0,0,0,.06);
+    }
+    html,body{min-height:100%;font-family:'Space Grotesk',sans-serif;background:var(--bg);color:var(--text);}
+    button{font-family:inherit;cursor:pointer;}a{text-decoration:none;color:inherit;}
+
+    /* header */
+    header{padding:20px 28px;display:flex;align-items:center;justify-content:space-between;}
+    .hdr-brand{display:flex;align-items:center;gap:12px;}
+    .hdr-logo{width:44px;height:44px;background:var(--primary);border-radius:11px;display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:700;color:#fff;}
+    .hdr-title{font-size:24px;font-weight:700;color:var(--primary);letter-spacing:-1px;}
+    .hdr-right{display:flex;align-items:center;gap:10px;}
+    .sem-badge{padding:6px 14px;background:#fff;border-radius:50px;font-size:11px;font-weight:700;color:var(--muted);border:1px solid var(--border);box-shadow:0 1px 3px rgba(0,0,0,.06);}
+    .btn-ghost-sm{display:flex;align-items:center;gap:6px;padding:7px 14px;border-radius:50px;background:transparent;border:none;font-family:inherit;font-size:13px;font-weight:500;color:var(--muted);transition:.2s;}
+    .btn-ghost-sm:hover{background:#fff;color:var(--text);}
+    .btn-ghost-sm svg{width:16px;height:16px;}
+
+    /* main */
+    main{display:flex;align-items:center;justify-content:center;padding:16px 24px 40px;min-height:calc(100vh - 90px);}
+    .card{background:var(--card);border-radius:28px;box-shadow:var(--shadow-xl);width:100%;max-width:500px;overflow:hidden;}
+    .card-bar{height:4px;background:linear-gradient(90deg,var(--primary),var(--accent));}
+
+    /* step: welcome */
+    .welcome-body{padding:40px 36px 48px;text-align:center;}
+    .scan-anim{width:120px;height:120px;position:relative;margin:0 auto 28px;display:flex;align-items:center;justify-content:center;}
+    .scan-anim .ring{position:absolute;inset:0;border-radius:50%;background:var(--primary-light);animation:ringPulse 2.5s ease-in-out infinite;}
+    .scan-anim .ring2{position:absolute;inset:8px;border-radius:50%;background:rgba(57,96,171,.08);animation:ringPulse 2.5s ease-in-out infinite .4s;}
+    @keyframes ringPulse{0%,100%{transform:scale(1);opacity:1;}50%{transform:scale(1.06);opacity:.7;}}
+    .scan-anim .icon-wrap{position:relative;width:80px;height:80px;border-radius:20px;background:#fff;border:2px solid var(--border);display:flex;align-items:center;justify-content:center;box-shadow:var(--shadow);}
+    .scan-anim svg{width:42px;height:42px;color:var(--primary);}
+    .welcome-body h2{font-size:32px;font-weight:700;letter-spacing:-1px;margin-bottom:8px;}
+    .welcome-body>p{font-size:15px;color:var(--muted);margin-bottom:28px;line-height:1.5;}
+    .scan-ready{display:flex;flex-direction:column;align-items:center;gap:4px;padding:18px 20px;background:var(--primary-light);border:2px dashed rgba(57,96,171,.2);border-radius:16px;margin-bottom:24px;animation:subtlePulse 2.5s ease-in-out infinite;}
+    @keyframes subtlePulse{0%,100%{background:var(--primary-light);}50%{background:rgba(57,96,171,.16);}}
+    .scan-ready svg{width:28px;height:28px;color:var(--primary);margin-bottom:4px;}
+    .scan-ready strong{font-size:13px;font-weight:700;color:var(--primary);}
+    .or-divider{display:flex;align-items:center;gap:12px;margin:20px 0;color:var(--muted);font-size:11px;font-weight:600;letter-spacing:1.5px;text-transform:uppercase;}
+    .or-divider::before,.or-divider::after{content:'';flex:1;height:1px;background:var(--border);}
+    .methods-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+    .method-btn{height:64px;border-radius:16px;background:transparent;border:2px solid var(--border);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;transition:.2s;}
+    .method-btn:hover{border-color:var(--primary);background:var(--primary-light);}
+    .method-btn svg{width:20px;height:20px;color:var(--primary);}
+    .method-btn span{font-size:11px;font-weight:700;}
+
+    /* step: manual rfid */
+    .step-body{padding:32px 36px 36px;}
+    .step-header{text-align:center;margin-bottom:24px;}
+    .step-header h2{font-size:28px;font-weight:700;letter-spacing:-1px;margin-bottom:6px;}
+    .step-header p{font-size:14px;color:var(--muted);}
+    .big-input{width:100%;height:72px;text-align:center;font-size:32px;font-weight:700;font-family:'Space Grotesk',sans-serif;letter-spacing:4px;border:none;background:var(--muted-bg);border-radius:14px;color:var(--text);outline:none;margin-bottom:20px;transition:.2s;}
+    .big-input:focus{background:#eef2ff;outline:2px solid var(--primary);}
+    .big-input::placeholder{color:#cbd5e1;letter-spacing:0;font-size:20px;font-weight:400;}
+    .btn-row{display:grid;grid-template-columns:1fr 2fr;gap:10px;}
+    .btn{display:flex;align-items:center;justify-content:center;gap:8px;font-family:inherit;font-size:14px;font-weight:600;border-radius:14px;padding:14px 20px;cursor:pointer;transition:.2s;border:none;}
+    .btn-primary{background:var(--primary);color:#fff;}
+    .btn-primary:hover:not(:disabled){background:#2d4f91;box-shadow:0 4px 16px rgba(57,96,171,.35);}
+    .btn-primary:disabled{opacity:.5;cursor:not-allowed;}
+    .btn-secondary{background:transparent;border:2px solid var(--border);color:var(--muted);}
+    .btn-secondary:hover{background:var(--muted-bg);color:var(--text);}
+    .btn-ghost{width:100%;background:transparent;border:none;padding:12px;border-radius:12px;color:var(--muted);font-family:inherit;font-size:13px;font-weight:500;display:flex;align-items:center;justify-content:center;gap:6px;transition:.2s;}
+    .btn-ghost:hover{background:var(--muted-bg);color:var(--text);}
+    .btn-ghost svg{width:16px;height:16px;}
+
+    /* step: user type */
+    .type-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;padding-bottom:8px;}
+    .type-btn{height:110px;border-radius:18px;background:transparent;border:2px solid var(--border);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;transition:.2s;}
+    .type-btn:hover{border-color:var(--primary);background:var(--primary-light);}
+    .type-btn svg{width:32px;height:32px;}
+    .type-btn span{font-size:15px;font-weight:700;}
+    .type-btn.blue svg{color:var(--primary);}
+    .type-btn.teal svg{color:var(--accent);}
+    .type-btn.gray svg{color:#94a3b8;}
+    .type-btn.orange svg{color:#f97316;}
+
+    /* step: affiliation */
+    .search-wrap{position:relative;margin-bottom:14px;}
+    .search-wrap svg{position:absolute;left:14px;top:50%;transform:translateY(-50%);width:18px;height:18px;color:var(--muted);}
+    .search-input{width:100%;padding:12px 14px 12px 42px;background:var(--muted-bg);border:none;border-radius:12px;font-family:'Space Grotesk',sans-serif;font-size:13px;color:var(--text);outline:none;}
+    .search-input:focus{background:#eef2ff;outline:2px solid var(--primary);}
+    .college-scroll{height:340px;overflow-y:auto;padding-right:4px;}
+    .college-scroll::-webkit-scrollbar{width:4px;}
+    .college-scroll::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px;}
+    .col-category{font-size:9px;font-weight:900;letter-spacing:3px;text-transform:uppercase;color:var(--muted);padding:8px 6px 6px;margin-top:4px;}
+    .college-btn{width:100%;text-align:left;padding:14px 16px;border-radius:14px;background:transparent;border:2px solid var(--border);margin-bottom:8px;display:flex;align-items:center;gap:12px;font-family:inherit;font-size:14px;font-weight:600;color:var(--text);transition:.2s;cursor:pointer;}
+    .college-btn:hover,.college-btn.sel{border-color:var(--primary);background:var(--primary-light);}
+    .college-btn svg{width:18px;height:18px;color:var(--primary);flex-shrink:0;}
+
+    /* step: purpose */
+    .purpose-user{display:flex;flex-direction:column;align-items:center;gap:6px;padding:24px 24px 20px;background:var(--primary-light);}
+    .pu-avatar{width:56px;height:56px;border-radius:50%;background:linear-gradient(135deg,var(--primary),var(--accent));display:flex;align-items:center;justify-content:center;font-weight:700;font-size:22px;color:#fff;}
+    .pu-name{font-size:20px;font-weight:700;}
+    .pu-sub{font-size:12px;color:var(--muted);}
+    .purpose-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;padding:24px 24px 8px;}
+    .purpose-btn{height:96px;border-radius:18px;background:transparent;border:2px solid var(--border);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;transition:.2s;}
+    .purpose-btn:hover:not(:disabled){border-color:var(--primary);background:var(--primary-light);}
+    .purpose-btn:disabled{opacity:.5;cursor:not-allowed;}
+    .purpose-btn .plabel{font-size:8px;font-weight:900;text-transform:uppercase;letter-spacing:2px;color:rgba(57,96,171,.5);}
+    .purpose-btn .pname{font-size:15px;font-weight:700;text-align:center;padding:0 8px;}
+
+    /* step: blocked */
+    .blocked-body{padding:40px 36px;text-align:center;}
+    .blocked-icon{width:80px;height:80px;border-radius:50%;background:var(--destructive);display:flex;align-items:center;justify-content:center;margin:0 auto 20px;box-shadow:0 8px 24px rgba(239,68,68,.25);}
+    .blocked-icon svg{width:42px;height:42px;color:#fff;}
+    .blocked-body h2{font-size:28px;font-weight:700;color:var(--destructive);margin-bottom:10px;}
+    .blocked-body p{font-size:14px;color:#475569;line-height:1.6;margin-bottom:24px;}
+
+    /* step: success */
+    .success-body{padding:56px 36px;text-align:center;background:linear-gradient(to bottom,#f0fdf4,#fff);}
+    .success-body::before{content:'';display:block;position:absolute;top:0;left:0;right:0;height:4px;background:var(--success);}
+    .card.success-card{position:relative;}
+    .success-ring{width:112px;height:112px;border-radius:50%;background:var(--success);display:flex;align-items:center;justify-content:center;margin:0 auto 32px;box-shadow:0 8px 32px rgba(16,185,129,.3);animation:popIn .4s cubic-bezier(.175,.885,.32,1.275);}
+    @keyframes popIn{from{transform:scale(0)}to{transform:scale(1)}}
+    .success-ring svg{width:64px;height:64px;color:#fff;}
+    .success-body h2{font-size:32px;font-weight:700;color:#14532d;letter-spacing:-1px;margin-bottom:8px;}
+    .success-body p{font-size:16px;color:#16a34a;font-weight:500;margin-bottom:40px;}
+    .success-actions{display:flex;flex-direction:column;align-items:center;gap:12px;max-width:280px;margin:0 auto;}
+    .btn-success{display:flex;align-items:center;justify-content:center;gap:10px;width:100%;padding:16px;font-size:16px;font-weight:700;border-radius:16px;background:var(--primary);color:#fff;border:none;cursor:pointer;transition:.2s;}
+    .btn-success:hover{background:#2d4f91;}
+    .btn-outline-green{display:flex;align-items:center;justify-content:center;gap:8px;width:100%;padding:14px;font-size:14px;font-weight:600;border-radius:16px;background:#fff;color:#166534;border:2px solid #bbf7d0;cursor:pointer;transition:.2s;box-shadow:0 1px 4px rgba(0,0,0,.06);}
+    .btn-outline-green:hover{background:#f0fdf4;}
+    .btn-text-green{background:transparent;border:none;color:rgba(22,101,52,.5);font-family:inherit;font-size:13px;cursor:pointer;padding:8px;transition:.2s;}
+    .btn-text-green:hover{color:#166534;}
+
+    /* spinner */
+    .spin{display:inline-block;width:20px;height:20px;border:2.5px solid rgba(255,255,255,.4);border-top-color:#fff;border-radius:50%;animation:spin .6s linear infinite;}
+    @keyframes spin{to{transform:rotate(360deg);}}
+    .spin-primary{border-color:rgba(57,96,171,.3);border-top-color:var(--primary);}
+
+    /* hidden */
+    .hidden{display:none!important;}
+  </style>
+</head>
+<body>
+
+<header>
+  <div class="hdr-brand">
+    <div class="hdr-logo">NEU</div>
+    <span class="hdr-title">NEU</span>
+  </div>
+  <div class="hdr-right">
+    <div class="sem-badge" id="semBadge">2024–2025 · 1st Sem</div>
+    <a href="admin.html" class="btn-ghost-sm">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><path d="M14 14h3v3M17 14h3M14 17h3v3"/></svg>
+      Admin
+    </a>
+  </div>
+</header>
+
+<main>
+  <!-- WELCOME STEP -->
+  <div class="card" id="stepWelcome">
+    <div class="card-bar"></div>
+    <div class="welcome-body">
+      <div class="scan-anim">
+        <div class="ring"></div>
+        <div class="ring2"></div>
+        <div class="icon-wrap">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 6v16l7-4 8 4 7-4V2l-7 4-8-4-7 4z"/><path d="M8 2v16M16 6v16"/></svg>
+        </div>
+      </div>
+      <h2>Tap to Enter</h2>
+      <p>Place your NEU School ID on the scanner.</p>
+      <div class="scan-ready">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
+        <strong>Ready to Scan...</strong>
+      </div>
+      <div class="or-divider">Other Methods</div>
+      <div class="methods-grid">
+        <button class="method-btn" onclick="goTo('stepManual')">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+          <span>Manual ID</span>
+        </button>
+        <button class="method-btn" onclick="goTo('stepType')">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4M10 17l5-5-5-5M13 12H3"/></svg>
+          <span>Walk-in</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MANUAL RFID/ID STEP -->
+  <div class="card hidden" id="stepManual">
+    <div class="card-bar"></div>
+    <div class="step-body">
+      <div class="step-header">
+        <h2>Manual Entry</h2>
+        <p>Enter your NEU School ID number</p>
+      </div>
+      <input class="big-input" id="manualId" placeholder="00-0000" autocomplete="off"/>
+      <div class="btn-row">
+        <button class="btn btn-secondary" onclick="goTo('stepWelcome')">Cancel</button>
+        <button class="btn btn-primary" id="btnVerify" onclick="handleManualID()">
+          <span id="btnVerifyTxt">Verify ID</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- TYPE STEP -->
+  <div class="card hidden" id="stepType">
+    <div class="card-bar"></div>
+    <div class="step-body">
+      <div class="step-header">
+        <h2>Who are you?</h2>
+        <p>Select your institutional role</p>
+      </div>
+      <div class="type-grid">
+        <button class="type-btn blue" onclick="pickType('Student')">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 10v6M2 10l10-5 10 5-10 5z"/><path d="M6 12v5c3 3 9 3 12 0v-5"/></svg>
+          <span>Student</span>
+        </button>
+        <button class="type-btn teal" onclick="pickType('Faculty')">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+          <span>Faculty</span>
+        </button>
+        <button class="type-btn gray" onclick="pickType('Staff')">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M20 21a8 8 0 1 0-16 0"/></svg>
+          <span>Staff</span>
+        </button>
+        <button class="type-btn orange" onclick="pickType('Alumni')">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 10v6M2 10l10-5 10 5-10 5z"/><path d="M6 12v5c3 3 9 3 12 0v-5"/></svg>
+          <span>Alumni</span>
+        </button>
+      </div>
+      <button class="btn-ghost" onclick="goTo('stepWelcome')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m15 18-6-6 6-6"/></svg>
+        Back
+      </button>
+    </div>
+  </div>
+
+  <!-- AFFILIATION STEP -->
+  <div class="card hidden" id="stepAffiliation">
+    <div class="card-bar"></div>
+    <div class="step-body" style="padding-bottom:8px;">
+      <div class="step-header">
+        <h2>Your Department</h2>
+        <p>Choose your NEU College or Office</p>
+      </div>
+      <div class="search-wrap">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+        <input class="search-input" id="collegeSearch" placeholder="Search department..." oninput="filterColleges()"/>
+      </div>
+      <div class="college-scroll" id="collegeList"></div>
+      <button class="btn-ghost" style="margin-top:8px;margin-bottom:8px;" onclick="goTo('stepType')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m15 18-6-6 6-6"/></svg>
+        Change Role
+      </button>
+    </div>
+  </div>
+
+  <!-- PURPOSE STEP -->
+  <div class="card hidden" id="stepPurpose">
+    <div class="card-bar"></div>
+    <div class="purpose-user" id="purposeUser">
+      <div class="pu-avatar" id="puAvatar">V</div>
+      <div class="pu-name" id="puName">Visitor</div>
+      <div class="pu-sub" id="puSub">—</div>
+    </div>
+    <div class="purpose-grid" id="purposeGrid"></div>
+    <div style="padding:0 24px 20px;">
+      <button class="btn-ghost" onclick="resetTerminal()">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m15 18-6-6 6-6"/></svg>
+        Not You? Reset
+      </button>
+    </div>
+  </div>
+
+  <!-- BLOCKED STEP -->
+  <div class="card hidden" id="stepBlocked">
+    <div class="card-bar" style="background:var(--destructive)"></div>
+    <div class="blocked-body">
+      <div class="blocked-icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="m9 12 2 2 4-4"/></svg>
+      </div>
+      <h2>Access Denied</h2>
+      <p>Your account has been blocked. Please proceed to the Admin Desk for assistance.</p>
+      <button class="btn btn-secondary" style="width:100%;border-radius:14px;height:52px;" onclick="resetTerminal()">Back to Terminal</button>
+    </div>
+  </div>
+
+  <!-- SUCCESS STEP -->
+  <div class="card success-card hidden" id="stepSuccess">
+    <div class="success-body">
+      <div class="success-ring">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M20 6 9 17l-5-5"/></svg>
+      </div>
+      <h2>Welcome to NEU Library!</h2>
+      <p>Your check-in has been recorded.</p>
+      <div class="success-actions">
+        <button class="btn-success" onclick="window.location.href='index.html'">
+          <svg style="width:22px;height:22px;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+          Finish
+        </button>
+        <button class="btn-text-green" id="resetBtn" onclick="resetTerminal()">Exit & Reset (10s)</button>
+      </div>
+    </div>
+  </div>
+</main>
+
+<script src="data.js"></script>
+<script>
+  const COLLEGES = {
+    "Undergraduate Colleges": [
+      "College of Accountancy","College of Agriculture","College of Arts and Sciences",
+      "College of Business Administration","College of Communication",
+      "College of Informatics and Computing Studies","College of Criminology",
+      "College of Education","College of Engineering and Architecture",
+      "College of Medical Technology","College of Midwifery","College of Music",
+      "College of Nursing","College of Physical Therapy","College of Respiratory Therapy"
+    ],
+    "Professional and Graduate Schools": [
+      "College of Law","College of Medicine",
+      "School of International Relations","School of Graduate Studies"
+    ]
+  };
+
+  // ── state ──────────────────────────────────────────────
+  let curStep = 'stepWelcome';
+  let userType = null, affiliation = '', userName = '', rfid = '';
+  let cdInterval = null;
+
+  // ── settings ───────────────────────────────────────────
+  const settings = DB.getSettings();
+  document.getElementById('semBadge').textContent =
+    `${settings.schoolYear || '2024-2025'} · ${settings.semester || '1st'} Sem`;
+
+  // ── step navigation ────────────────────────────────────
+  function goTo(step) {
+    document.getElementById(curStep).classList.add('hidden');
+    document.getElementById(step).classList.remove('hidden');
+    curStep = step;
+    if (step === 'stepManual') setTimeout(() => document.getElementById('manualId').focus(), 100);
+    if (step === 'stepAffiliation') { renderColleges(); document.getElementById('collegeSearch').value=''; }
+  }
+
+  // ── RFID global listener ───────────────────────────────
+  let rfidBuf = '', rfidTimer;
+  document.addEventListener('keydown', e => {
+    if (e.target instanceof HTMLInputElement) return;
+    if (e.key === 'Enter') {
+      if (rfidBuf.length >= 4) processRFID(rfidBuf.trim());
+      rfidBuf = '';
+    } else if (e.key.length === 1) {
+      clearTimeout(rfidTimer);
+      rfidBuf += e.key;
+      rfidTimer = setTimeout(() => { rfidBuf = ''; }, 300);
+    }
+  });
+
+  // Check URL param (from home page redirect)
+  const urlRFID = new URLSearchParams(location.search).get('rfid');
+  if (urlRFID) setTimeout(() => processRFID(urlRFID), 300);
+
+  // ── process RFID ───────────────────────────────────────
+  function processRFID(code) {
+    if (curStep === 'stepSuccess') return;
+    rfid = code;
+    const u = DB.getUserByRFID(code) || DB.getUserBySchoolId(code);
+    if (!u) { showToast('Unrecognized ID — not found. Please register with Admin.'); return; }
+    if (u.isBlocked) { goTo('stepBlocked'); return; }
+    userName = u.name; affiliation = u.userAffiliation || u.affiliation || ''; userType = u.userType;
+    fillPurposeUser();
+    goTo('stepPurpose');
+  }
+
+  // ── manual ID ──────────────────────────────────────────
+  document.getElementById('manualId').addEventListener('keydown', e => { if(e.key==='Enter') handleManualID(); });
+  function handleManualID() {
+    const val = document.getElementById('manualId').value.trim();
+    if (!val) { showToast('Please enter your ID number.'); return; }
+    rfid = val;
+    const u = DB.getUserByRFID(val) || DB.getUserBySchoolId(val);
+    if (!u) { showToast('ID not found. Please register with Admin.'); return; }
+    if (u.isBlocked) { goTo('stepBlocked'); return; }
+    userName = u.name; affiliation = u.userAffiliation || u.affiliation || ''; userType = u.userType;
+    fillPurposeUser(); goTo('stepPurpose');
+  }
+
+  // ── type selection ─────────────────────────────────────
+  function pickType(t) { userType = t; goTo('stepAffiliation'); }
+
+  // ── affiliation ────────────────────────────────────────
+  function renderColleges() {
+    const q = document.getElementById('collegeSearch').value.toLowerCase();
+    let html = '';
+    Object.entries(COLLEGES).forEach(([cat, list]) => {
+      const filtered = list.filter(c => c.toLowerCase().includes(q));
+      if (!filtered.length) return;
+      html += `<div class="col-category">${cat}</div>`;
+      filtered.forEach(c => {
+        html += `<button class="college-btn" onclick="pickCollege('${c.replace(/'/g,"\\'")}')">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>
+          ${c}
+        </button>`;
+      });
+    });
+    document.getElementById('collegeList').innerHTML = html || '<p style="text-align:center;padding:20px;color:var(--muted);font-size:13px;">No results.</p>';
+  }
+  function filterColleges() { renderColleges(); }
+  function pickCollege(c) { affiliation = c; fillPurposeUser(); goTo('stepPurpose'); }
+
+  // ── purpose step ───────────────────────────────────────
+  function fillPurposeUser() {
+    document.getElementById('puAvatar').textContent = (userName||'V').split(' ').map(w=>w[0]).join('').substring(0,2).toUpperCase();
+    document.getElementById('puName').textContent = userName || 'Visitor';
+    document.getElementById('puSub').textContent = [affiliation, userType].filter(Boolean).join(' • ') || '—';
+
+    const purposes = DB.getSettings().purposes || ['Reading Books','Research in Thesis','Use of Computer','Doing Assignments'];
+    document.getElementById('purposeGrid').innerHTML = purposes.map(p => `
+      <button class="purpose-btn" onclick="submitLog('${p.replace(/'/g,"\\'")}')">
+        <span class="plabel">Library Activity</span>
+        <span class="pname">${p}</span>
+      </button>`).join('');
+  }
+
+  // ── submit log ─────────────────────────────────────────
+  function submitLog(purpose) {
+    document.querySelectorAll('.purpose-btn').forEach(b => b.disabled = true);
+    DB.addLog({
+      userId: rfid ? `rfid_${rfid}` : 'walkin',
+      userName: userName || (rfid ? `ID: ${rfid}` : 'Visitor'),
+      userAffiliation: affiliation,
+      userType: userType || 'Student',
+      rfidTagNumber: rfid || null,
+      purposeOfVisit: purpose,
+      schoolYear: settings.schoolYear || '2024-2025',
+      semester: settings.semester || '1st'
+    });
+    goTo('stepSuccess');
+    startCountdown(10);
+  }
+
+  function startCountdown(s) {
+    clearInterval(cdInterval); let rem = s;
+    const btn = document.getElementById('resetBtn');
+    cdInterval = setInterval(() => {
+      rem--;
+      btn.textContent = `Exit & Reset (${rem}s)`;
+      if (rem <= 0) { clearInterval(cdInterval); resetTerminal(); }
+    }, 1000);
+  }
+
+  // ── reset ──────────────────────────────────────────────
+  function resetTerminal() {
+    clearInterval(cdInterval);
+    userType=null; affiliation=''; userName=''; rfid='';
+    document.getElementById('manualId').value='';
+    history.replaceState(null,'','/terminal.html');
+    goTo('stepWelcome');
+  }
+
+  // ── toast ──────────────────────────────────────────────
+  let toastEl = null;
+  function showToast(msg) {
+    if (!toastEl) {
+      toastEl = document.createElement('div');
+      Object.assign(toastEl.style, {
+        position:'fixed', bottom:'24px', left:'50%', transform:'translateX(-50%)',
+        background:'#1e293b', color:'#fff', padding:'12px 22px', borderRadius:'10px',
+        fontSize:'13px', fontWeight:'500', zIndex:'999', opacity:'0',
+        transition:'opacity .25s', whiteSpace:'nowrap', pointerEvents:'none'
+      });
+      document.body.appendChild(toastEl);
+    }
+    toastEl.textContent = msg; toastEl.style.opacity = '1';
+    clearTimeout(toastEl._t);
+    toastEl._t = setTimeout(() => { toastEl.style.opacity = '0'; }, 3000);
+  }
+</script>
+</body>
+</html>
