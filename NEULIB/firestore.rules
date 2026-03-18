@@ -1,0 +1,66 @@
+// firestore.rules
+// Deploy with: firebase deploy --only firestore:rules
+
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Helper function: check if user is admin
+    function isAdmin() {
+      return request.auth != null &&
+        exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+    }
+
+    // Helper function: check if user is authenticated
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    // Helper function: check NEU email domain
+    function isNEUEmail() {
+      return request.auth.token.email.matches('.*@neu\\.edu\\.ph');
+    }
+
+    // USERS collection
+    match /users/{userId} {
+      // Anyone can read their own profile
+      allow read: if isAuthenticated() && request.auth.uid == userId;
+      // Admins can read all users
+      allow read: if isAdmin();
+      // Users can create their own profile (on first sign-in)
+      allow create: if isAuthenticated() && request.auth.uid == userId && isNEUEmail();
+      // Only admins can update is_blocked; users can update their own non-sensitive fields
+      allow update: if isAdmin();
+      allow update: if isAuthenticated() && request.auth.uid == userId &&
+        !('is_blocked' in request.resource.data.diff(resource.data).affectedKeys()) &&
+        !('role' in request.resource.data.diff(resource.data).affectedKeys());
+      // Only admins can delete
+      allow delete: if isAdmin();
+    }
+
+    // VISIT_LOGS collection
+    match /visit_logs/{logId} {
+      // Visitors can only create logs for themselves
+      allow create: if isAuthenticated() &&
+        request.resource.data.user_id == request.auth.uid &&
+        isNEUEmail() &&
+        request.resource.data.keys().hasAll(['user_id', 'timestamp', 'purpose', 'user_name', 'college']);
+      // Only admins can read all logs
+      allow read: if isAdmin();
+      // No updates or deletes on logs (immutable audit trail)
+      allow update, delete: if false;
+    }
+
+    // RFID_SESSIONS collection (temporary sessions for RFID-based login)
+    match /rfid_sessions/{sessionId} {
+      allow read, write: if false; // Server-side only via Admin SDK
+    }
+
+    // ADMINS collection (stores admin UIDs for quick lookup)
+    match /admins/{adminId} {
+      allow read: if isAdmin();
+      allow write: if false; // Only via Firebase Console or Admin SDK
+    }
+  }
+}
