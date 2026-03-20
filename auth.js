@@ -26,6 +26,8 @@ const FIREBASE_CONFIG = {
   appId:             "YOUR_APP_ID"
 };
 
+const GOOGLE_CLIENT_ID = '893098672005-scu9icgbapne34q51j0o8029mkfbbfvo.apps.googleusercontent.com';
+
 // ── Authorised admin accounts (both roles: user + admin) ─────
 const ADMIN_EMAILS = [
   "jcesperanza@neu.edu.ph",
