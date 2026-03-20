@@ -1,0 +1,628 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>NEU – Visitor Terminal</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
+  <style>
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+    :root{
+      --primary:#3960AB; --pl:rgba(57,96,171,.1); --accent:#3CC2DD; --al:rgba(60,194,221,.12);
+      --bg:#F1F5F9; --card:#fff; --border:#e2e8f0;
+      --text:#0f172a; --muted:#64748b; --muted-bg:#f1f5f9;
+      --dest:#ef4444; --dest-l:rgba(239,68,68,.08);
+      --success:#10b981;
+      --sh:0 1px 3px rgba(0,0,0,.06),0 8px 24px rgba(57,96,171,.08);
+      --sh-xl:0 8px 40px rgba(57,96,171,.15),0 1px 4px rgba(0,0,0,.06);
+    }
+    html,body{min-height:100%;font-family:'Space Grotesk',sans-serif;background:var(--bg);color:var(--text);}
+    button{font-family:inherit;cursor:pointer;}a{text-decoration:none;color:inherit;}
+
+    /* ── HEADER ── */
+    header{padding:16px 28px;display:flex;align-items:center;justify-content:space-between;background:transparent;}
+    .hbrand{display:flex;align-items:center;gap:10px;}
+    .hlogo{width:40px;height:40px;background:var(--primary);border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:700;color:#fff;}
+    .htitle{font-size:20px;font-weight:700;color:var(--primary);letter-spacing:-1px;}
+    .hright{display:flex;align-items:center;gap:8px;}
+    .sem-badge{padding:5px 12px;background:#fff;border-radius:50px;font-size:10px;font-weight:700;color:var(--muted);border:1px solid var(--border);box-shadow:0 1px 2px rgba(0,0,0,.05);}
+
+    /* signed-in header chip */
+    .hchip{display:none;align-items:center;gap:7px;background:#fff;border:1px solid var(--border);border-radius:50px;padding:4px 10px 4px 5px;}
+    .hchip.show{display:flex;}
+    .hchip-av{width:24px;height:24px;border-radius:50%;background:linear-gradient(135deg,var(--primary),var(--accent));display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;color:#fff;overflow:hidden;flex-shrink:0;}
+    .hchip-av img{width:100%;height:100%;object-fit:cover;border-radius:50%;}
+    .hchip-name{font-size:11px;font-weight:600;max-width:130px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+    .btn-hso{background:transparent;border:none;padding:3px;color:var(--muted);cursor:pointer;transition:.15s;border-radius:4px;}
+    .btn-hso:hover{color:var(--dest);}
+    .btn-hso svg{width:13px;height:13px;display:block;}
+    .btn-link{display:flex;align-items:center;gap:5px;padding:5px 11px;border-radius:50px;background:transparent;border:1px solid var(--border);font-family:inherit;font-size:11px;font-weight:600;color:var(--muted);cursor:pointer;transition:.2s;text-decoration:none;}
+    .btn-link:hover{background:#fff;color:var(--text);}
+    .btn-link svg{width:13px;height:13px;}
+
+    /* ── MAIN ── */
+    main{display:flex;align-items:center;justify-content:center;padding:10px 24px 40px;min-height:calc(100vh - 80px);}
+    .card{background:var(--card);border-radius:28px;box-shadow:var(--sh-xl);width:100%;max-width:500px;overflow:hidden;}
+    .card-bar{height:4px;background:linear-gradient(90deg,var(--primary),var(--accent));}
+    .step{display:none;}
+    .step.active{display:block;animation:fadeUp .28s ease;}
+    @keyframes fadeUp{from{opacity:0;transform:translateY(8px);}to{opacity:1;transform:translateY(0);}}
+
+    /* ── STEP: WELCOME ── */
+    .welcome-body{padding:38px 34px 46px;text-align:center;}
+    .scan-anim{width:114px;height:114px;position:relative;margin:0 auto 24px;display:flex;align-items:center;justify-content:center;}
+    .ring1{position:absolute;inset:0;border-radius:50%;background:var(--pl);animation:rp 2.5s ease-in-out infinite;}
+    .ring2{position:absolute;inset:8px;border-radius:50%;background:rgba(57,96,171,.07);animation:rp 2.5s ease-in-out infinite .4s;}
+    @keyframes rp{0%,100%{transform:scale(1);opacity:1;}50%{transform:scale(1.05);opacity:.7;}}
+    .icon-wrap{position:relative;width:76px;height:76px;border-radius:19px;background:#fff;border:2px solid var(--border);display:flex;align-items:center;justify-content:center;box-shadow:var(--sh);}
+    .icon-wrap svg{width:40px;height:40px;color:var(--primary);}
+    .welcome-body h2{font-size:30px;font-weight:700;letter-spacing:-1px;margin-bottom:7px;}
+    .welcome-body>p{font-size:14px;color:var(--muted);margin-bottom:26px;line-height:1.5;}
+    .scan-ready-box{display:flex;flex-direction:column;align-items:center;gap:4px;padding:15px 18px;background:var(--pl);border:2px dashed rgba(57,96,171,.18);border-radius:15px;margin-bottom:22px;animation:srp 2.5s ease-in-out infinite;}
+    @keyframes srp{0%,100%{background:var(--pl);}50%{background:rgba(57,96,171,.15);}}
+    .scan-ready-box svg{width:24px;height:24px;color:var(--primary);margin-bottom:2px;}
+    .scan-ready-box strong{font-size:12px;font-weight:700;color:var(--primary);}
+    .or-line{display:flex;align-items:center;gap:10px;margin:18px 0;color:var(--muted);font-size:10px;font-weight:700;letter-spacing:2px;text-transform:uppercase;}
+    .or-line::before,.or-line::after{content:'';flex:1;height:1px;background:var(--border);}
+    .methods-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:9px;}
+    .meth-btn{height:60px;border-radius:13px;background:transparent;border:2px solid var(--border);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;transition:.2s;cursor:pointer;}
+    .meth-btn:hover{border-color:var(--primary);background:var(--pl);}
+    .meth-btn svg{width:18px;height:18px;color:var(--primary);}
+    .meth-btn span{font-size:10px;font-weight:700;}
+
+    /* ── STEP: MANUAL ── */
+    .step-body{padding:30px 34px 34px;}
+    .step-hd{text-align:center;margin-bottom:20px;}
+    .step-hd h2{font-size:25px;font-weight:700;letter-spacing:-1px;margin-bottom:4px;}
+    .step-hd p{font-size:13px;color:var(--muted);}
+    .big-input{width:100%;height:66px;text-align:center;font-size:28px;font-weight:700;font-family:'Space Grotesk',sans-serif;letter-spacing:4px;border:none;background:var(--muted-bg);border-radius:12px;color:var(--text);outline:none;margin-bottom:17px;transition:.2s;}
+    .big-input:focus{background:#eef2ff;outline:2px solid var(--primary);}
+    .big-input::placeholder{color:#cbd5e1;letter-spacing:0;font-size:17px;font-weight:400;}
+    .btn2{display:grid;grid-template-columns:1fr 2fr;gap:9px;}
+    .btn{display:flex;align-items:center;justify-content:center;gap:7px;font-family:inherit;font-size:13px;font-weight:600;border-radius:12px;padding:13px 17px;cursor:pointer;transition:.2s;border:none;}
+    .btn-p{background:var(--primary);color:#fff;}
+    .btn-p:hover:not(:disabled){background:#2d4f91;box-shadow:0 4px 14px rgba(57,96,171,.35);}
+    .btn-p:disabled{opacity:.5;cursor:not-allowed;}
+    .btn-s{background:transparent;border:2px solid var(--border);color:var(--muted);}
+    .btn-s:hover{background:var(--muted-bg);color:var(--text);}
+    .btn-ghost{width:100%;background:transparent;border:none;padding:10px;border-radius:10px;color:var(--muted);font-family:inherit;font-size:12px;font-weight:500;display:flex;align-items:center;justify-content:center;gap:5px;transition:.2s;cursor:pointer;}
+    .btn-ghost:hover{background:var(--muted-bg);color:var(--text);}
+    .btn-ghost svg{width:14px;height:14px;}
+
+    /* ── STEP: GOOGLE ── */
+    .google-body{padding:34px 34px 38px;text-align:center;}
+    .g-icon-wrap{width:56px;height:56px;border-radius:14px;background:var(--pl);display:flex;align-items:center;justify-content:center;margin:0 auto 14px;}
+    .google-body h2{font-size:24px;font-weight:700;letter-spacing:-1px;margin-bottom:5px;}
+    .google-body>p{font-size:13px;color:var(--muted);margin-bottom:22px;line-height:1.5;}
+    .google-body .denied-note{font-size:11px;color:var(--dest);margin-top:10px;}
+    .btn-google-full{width:100%;display:flex;align-items:center;justify-content:center;gap:10px;padding:14px 18px;background:#fff;border:1.5px solid var(--border);border-radius:13px;font-family:inherit;font-size:14px;font-weight:600;color:var(--text);cursor:pointer;transition:.2s;box-shadow:0 1px 3px rgba(0,0,0,.06);margin-bottom:10px;}
+    .btn-google-full:hover:not(:disabled){box-shadow:0 3px 12px rgba(57,96,171,.15);border-color:#b0bfd4;}
+    .btn-google-full:disabled{opacity:.6;cursor:not-allowed;}
+
+    /* ── STEP: TYPE ── */
+    .type-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;padding-bottom:6px;}
+    .type-btn{height:106px;border-radius:16px;background:transparent;border:2px solid var(--border);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;transition:.2s;cursor:pointer;}
+    .type-btn:hover{border-color:var(--primary);background:var(--pl);}
+    .type-btn svg{width:28px;height:28px;}
+    .type-btn span{font-size:14px;font-weight:700;}
+    .type-btn.c-blue svg{color:var(--primary);}
+    .type-btn.c-teal svg{color:var(--accent);}
+    .type-btn.c-gray svg{color:#94a3b8;}
+    .type-btn.c-orange svg{color:#f97316;}
+
+    /* ── STEP: AFFILIATION ── */
+    .sw{position:relative;margin-bottom:12px;}
+    .sw svg{position:absolute;left:12px;top:50%;transform:translateY(-50%);width:15px;height:15px;color:var(--muted);}
+    .si{width:100%;padding:10px 12px 10px 34px;background:var(--muted-bg);border:none;border-radius:10px;font-family:'Space Grotesk',sans-serif;font-size:12px;color:var(--text);outline:none;}
+    .si:focus{background:#eef2ff;outline:2px solid var(--primary);}
+    .cs{height:320px;overflow-y:auto;padding-right:3px;}
+    .cs::-webkit-scrollbar{width:3px;}.cs::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px;}
+    .cc{font-size:8px;font-weight:900;letter-spacing:3px;text-transform:uppercase;color:var(--muted);padding:7px 5px 4px;margin-top:3px;}
+    .cb{width:100%;text-align:left;padding:12px 14px;border-radius:12px;background:transparent;border:2px solid var(--border);margin-bottom:6px;display:flex;align-items:center;gap:9px;font-family:inherit;font-size:13px;font-weight:600;color:var(--text);transition:.2s;cursor:pointer;}
+    .cb:hover{border-color:var(--primary);background:var(--pl);}
+    .cb svg{width:15px;height:15px;color:var(--primary);flex-shrink:0;}
+
+    /* ── STEP: PURPOSE ── */
+    .pu-header{display:flex;flex-direction:column;align-items:center;gap:5px;padding:20px 20px 16px;background:var(--pl);}
+    .pu-av{width:52px;height:52px;border-radius:50%;background:linear-gradient(135deg,var(--primary),var(--accent));display:flex;align-items:center;justify-content:center;font-weight:700;font-size:20px;color:#fff;overflow:hidden;}
+    .pu-av img{width:100%;height:100%;object-fit:cover;border-radius:50%;}
+    .pu-name{font-size:18px;font-weight:700;}
+    .pu-sub{font-size:11px;color:var(--muted);}
+    .pgrid{display:grid;grid-template-columns:1fr 1fr;gap:10px;padding:20px 20px 6px;}
+    .pbtn{height:88px;border-radius:16px;background:transparent;border:2px solid var(--border);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5px;transition:.2s;cursor:pointer;}
+    .pbtn:hover:not(:disabled){border-color:var(--primary);background:var(--pl);}
+    .pbtn:disabled{opacity:.4;cursor:not-allowed;}
+    .pbtn .pl{font-size:7px;font-weight:900;text-transform:uppercase;letter-spacing:2px;color:rgba(57,96,171,.5);}
+    .pbtn .pn{font-size:13px;font-weight:700;text-align:center;padding:0 6px;}
+
+    /* ── STEP: BLOCKED ── */
+    .blocked-body{padding:36px 32px;text-align:center;}
+    .blocked-icon{width:72px;height:72px;border-radius:50%;background:var(--dest);display:flex;align-items:center;justify-content:center;margin:0 auto 16px;box-shadow:0 8px 22px rgba(239,68,68,.25);}
+    .blocked-icon svg{width:38px;height:38px;color:#fff;}
+    .blocked-body h2{font-size:24px;font-weight:700;color:var(--dest);margin-bottom:8px;}
+    .blocked-body p{font-size:13px;color:#475569;line-height:1.6;margin-bottom:20px;}
+
+    /* ── STEP: SUCCESS ── */
+    .success-card{position:relative;}
+    .success-body{padding:48px 34px 48px;text-align:center;background:linear-gradient(to bottom,#f0fdf4,#fff);}
+    .success-body::before{content:'';position:absolute;top:0;left:0;right:0;height:4px;background:var(--success);}
+    .success-ring{width:100px;height:100px;border-radius:50%;background:var(--success);display:flex;align-items:center;justify-content:center;margin:0 auto 20px;box-shadow:0 8px 28px rgba(16,185,129,.3);animation:popIn .4s cubic-bezier(.175,.885,.32,1.275);}
+    @keyframes popIn{from{transform:scale(0)}to{transform:scale(1)}}
+    .success-ring svg{width:56px;height:56px;color:#fff;}
+    .success-body h2{font-size:28px;font-weight:700;color:#14532d;letter-spacing:-1px;margin-bottom:4px;}
+    .success-name{font-size:18px;font-weight:700;color:#15803d;margin-bottom:4px;}
+    .success-sub{font-size:13px;color:#16a34a;font-weight:500;margin-bottom:32px;}
+    .success-btns{display:flex;flex-direction:column;align-items:center;gap:10px;max-width:260px;margin:0 auto;}
+    .btn-fin{display:flex;align-items:center;justify-content:center;gap:8px;width:100%;padding:14px;font-size:14px;font-weight:700;border-radius:14px;background:var(--primary);color:#fff;border:none;cursor:pointer;transition:.2s;text-decoration:none;}
+    .btn-fin:hover{background:#2d4f91;}
+    .btn-reset{background:transparent;border:none;color:rgba(22,101,52,.35);font-family:inherit;font-size:12px;cursor:pointer;padding:6px;transition:.2s;}
+    .btn-reset:hover{color:#166534;}
+
+    /* ── UTILS ── */
+    .spin{display:inline-block;width:16px;height:16px;border:2.5px solid rgba(57,96,171,.2);border-top-color:var(--primary);border-radius:50%;animation:spin .6s linear infinite;flex-shrink:0;}
+    @keyframes spin{to{transform:rotate(360deg);}}
+    .hidden{display:none!important;}
+    .toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:#1e293b;color:#fff;padding:10px 20px;border-radius:9px;font-size:12px;font-weight:500;z-index:999;opacity:0;transition:opacity .25s;pointer-events:none;white-space:nowrap;max-width:90vw;text-align:center;}
+    .toast.show{opacity:1;}.toast.err{background:#7f1d1d;border:1px solid var(--dest);}
+  </style>
+</head>
+<body>
+
+<header>
+  <div class="hbrand">
+    <div class="hlogo">NEU</div>
+    <span class="htitle">NEU</span>
+  </div>
+  <div class="hright">
+    <div class="sem-badge" id="semBadge">2024–2025 · 1st Sem</div>
+
+    <!-- Signed-in chip (shown when authed) -->
+    <div class="hchip" id="hdrChip">
+      <div class="hchip-av" id="hdrAv"></div>
+      <span class="hchip-name" id="hdrName"></span>
+      <button class="btn-hso" onclick="doSignOut()" title="Sign out">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+      </button>
+    </div>
+
+    <!-- Switch role (admin only) -->
+    <a href="index.html" class="btn-link hidden" id="btnSwitchRole" onclick="Auth.clearActiveRole()">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m17 1 4 4-4 4"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><path d="m7 23-4-4 4-4"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg>
+      Switch Role
+    </a>
+    <!-- Admin dashboard shortcut (admin only) -->
+    <a href="admin.html" class="btn-link hidden" id="btnAdminLink">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><path d="M14 14h3v3M17 14h3M14 17h3v3"/></svg>
+      Admin
+    </a>
+  </div>
+</header>
+
+<main>
+
+  <!-- ── WELCOME ── -->
+  <div class="card step active" id="stepWelcome">
+    <div class="card-bar"></div>
+    <div class="welcome-body">
+      <div class="scan-anim">
+        <div class="ring1"></div><div class="ring2"></div>
+        <div class="icon-wrap">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 6v16l7-4 8 4 7-4V2l-7 4-8-4-7 4z"/><path d="M8 2v16M16 6v16"/></svg>
+        </div>
+      </div>
+      <h2>Tap to Enter</h2>
+      <p>Place your NEU School ID on the scanner.</p>
+      <div class="scan-ready-box">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
+        <strong>Ready to Scan…</strong>
+      </div>
+      <div class="or-line">Other Methods</div>
+      <div class="methods-grid">
+        <button class="meth-btn" onclick="goTo('stepManual')">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+          <span>Manual ID</span>
+        </button>
+        <button class="meth-btn" onclick="goTo('stepGoogle')">
+          <svg width="18" height="18" viewBox="0 0 24 24"><path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/><path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/><path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/><path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/></svg>
+          <span>NEU Google</span>
+        </button>
+        <button class="meth-btn" onclick="goTo('stepType')">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4M10 17l5-5-5-5M13 12H3"/></svg>
+          <span>Walk-in</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── MANUAL ID ── -->
+  <div class="card step hidden" id="stepManual">
+    <div class="card-bar"></div>
+    <div class="step-body">
+      <div class="step-hd"><h2>Manual Entry</h2><p>Enter your NEU School ID number</p></div>
+      <input class="big-input" id="manualId" placeholder="00-0000" autocomplete="off"/>
+      <div class="btn2">
+        <button class="btn btn-s" onclick="goTo('stepWelcome')">Cancel</button>
+        <button class="btn btn-p" onclick="handleManualID()">Verify ID</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── GOOGLE SIGN-IN ── -->
+  <div class="card step hidden" id="stepGoogle">
+    <div class="card-bar"></div>
+    <div class="google-body">
+      <div class="g-icon-wrap">
+        <svg width="28" height="28" viewBox="0 0 24 24"><path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/><path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/><path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/><path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/></svg>
+      </div>
+      <h2>Sign in with Google</h2>
+      <p>Use your NEU institutional account to check in to the library.</p>
+      <button class="btn-google-full" id="btnGoogleSignIn" onclick="handleGoogleSignIn()">
+        <svg width="17" height="17" viewBox="0 0 24 24"><path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/><path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/><path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/><path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/></svg>
+        Sign in with NEU Account
+      </button>
+      <p class="denied-note">@gmail.com and personal accounts are not allowed.</p>
+      <button class="btn-ghost" onclick="goTo('stepWelcome')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m15 18-6-6 6-6"/></svg>
+        Back
+      </button>
+    </div>
+  </div>
+
+  <!-- ── USER TYPE ── -->
+  <div class="card step hidden" id="stepType">
+    <div class="card-bar"></div>
+    <div class="step-body">
+      <div class="step-hd"><h2>Who are you?</h2><p>Select your institutional role</p></div>
+      <div class="type-grid">
+        <button class="type-btn c-blue"  onclick="pickType('Student')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 10v6M2 10l10-5 10 5-10 5z"/><path d="M6 12v5c3 3 9 3 12 0v-5"/></svg><span>Student</span></button>
+        <button class="type-btn c-teal"  onclick="pickType('Faculty')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg><span>Faculty</span></button>
+        <button class="type-btn c-gray"  onclick="pickType('Staff')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M20 21a8 8 0 1 0-16 0"/></svg><span>Staff</span></button>
+        <button class="type-btn c-orange" onclick="pickType('Alumni')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 10v6M2 10l10-5 10 5-10 5z"/><path d="M6 12v5c3 3 9 3 12 0v-5"/></svg><span>Alumni</span></button>
+      </div>
+      <button class="btn-ghost" onclick="goTo('stepWelcome')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m15 18-6-6 6-6"/></svg>Back
+      </button>
+    </div>
+  </div>
+
+  <!-- ── AFFILIATION ── -->
+  <div class="card step hidden" id="stepAffiliation">
+    <div class="card-bar"></div>
+    <div class="step-body" style="padding-bottom:6px;">
+      <div class="step-hd"><h2>Your Department</h2><p>Choose your NEU College or Office</p></div>
+      <div class="sw">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+        <input class="si" id="collegeSearch" placeholder="Search department…" oninput="renderColleges()"/>
+      </div>
+      <div class="cs" id="collegeList"></div>
+      <button class="btn-ghost" style="margin:6px 0 8px;" onclick="goTo('stepType')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m15 18-6-6 6-6"/></svg>Change Role
+      </button>
+    </div>
+  </div>
+
+  <!-- ── PURPOSE ── -->
+  <div class="card step hidden" id="stepPurpose">
+    <div class="card-bar"></div>
+    <div class="pu-header">
+      <div class="pu-av" id="puAv">V</div>
+      <div class="pu-name" id="puName">Visitor</div>
+      <div class="pu-sub" id="puSub">—</div>
+    </div>
+    <div class="pgrid" id="pgrid"></div>
+    <div style="padding:0 20px 16px;">
+      <button class="btn-ghost" onclick="resetTerminal()">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m15 18-6-6 6-6"/></svg>Not You? Reset
+      </button>
+    </div>
+  </div>
+
+  <!-- ── BLOCKED ── -->
+  <div class="card step hidden" id="stepBlocked">
+    <div class="card-bar" style="background:var(--dest)"></div>
+    <div class="blocked-body">
+      <div class="blocked-icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+      </div>
+      <h2>Access Denied</h2>
+      <p>Your account has been blocked. Please proceed to the Admin Desk for assistance.</p>
+      <button class="btn btn-s" style="width:100%;border-radius:12px;height:48px;" onclick="resetTerminal()">Back to Terminal</button>
+    </div>
+  </div>
+
+  <!-- ── SUCCESS ── -->
+  <div class="card success-card step hidden" id="stepSuccess">
+    <div class="success-body">
+      <div class="success-ring">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M20 6 9 17l-5-5"/></svg>
+      </div>
+      <h2>Welcome to NEU Library!</h2>
+      <p class="success-name" id="successName"></p>
+      <p class="success-sub">Your visit has been recorded successfully.</p>
+      <div class="success-btns" id="successBtns"></div>
+    </div>
+  </div>
+
+</main>
+<div class="toast" id="toast"></div>
+
+<script src="data.js"></script>
+<script src="auth.js"></script>
+<script>
+// ── COLLEGES DATA ────────────────────────────────────────────
+const COLLEGES = {
+  "Undergraduate Colleges": [
+    "College of Accountancy","College of Agriculture","College of Arts and Sciences",
+    "College of Business Administration","College of Communication",
+    "College of Informatics and Computing Studies","College of Criminology",
+    "College of Education","College of Engineering and Architecture",
+    "College of Medical Technology","College of Midwifery","College of Music",
+    "College of Nursing","College of Physical Therapy","College of Respiratory Therapy"
+  ],
+  "Professional and Graduate Schools": [
+    "College of Law","College of Medicine",
+    "School of International Relations","School of Graduate Studies"
+  ]
+};
+
+// ── STATE ────────────────────────────────────────────────────
+let _step       = 'stepWelcome';
+let _userName   = '';
+let _userPhoto  = null;
+let _userType   = null;
+let _affil      = '';
+let _rfid       = '';
+let _cdInt      = null;
+let _signedInUser = null; // Firebase user object
+
+// ── INIT ─────────────────────────────────────────────────────
+const settings = DB.getSettings();
+document.getElementById('semBadge').textContent =
+  `${settings.schoolYear || '2024-2025'} · ${settings.semester || '1st'} Sem`;
+
+// ── RFID GLOBAL CAPTURE ───────────────────────────────────────
+let _rfidBuf = '', _rfidTs = 0;
+document.addEventListener('keydown', e => {
+  if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
+  const now = Date.now();
+  if (now - _rfidTs > 100) _rfidBuf = '';
+  _rfidTs = now;
+  if (e.key === 'Enter') {
+    if (_rfidBuf.length >= 4) processID(_rfidBuf.trim());
+    _rfidBuf = '';
+  } else if (e.key.length === 1) _rfidBuf += e.key;
+});
+
+// ── URL RFID PARAM (from home page) ──────────────────────────
+const _urlRFID = new URLSearchParams(location.search).get('rfid');
+if (_urlRFID) setTimeout(() => processID(_urlRFID), 300);
+
+// ── AUTH STATE ───────────────────────────────────────────────
+Auth.onAuthStateChanged(fbUser => {
+  if (!fbUser) { updateHeaderChip(null); return; }
+  if (!Auth.isNEUEmail(fbUser.email)) {
+    Auth.signOut().then(() => showToast('@gmail.com accounts are not allowed.', true));
+    return;
+  }
+  _signedInUser = fbUser;
+  Auth.saveSession(fbUser);
+  Auth.ensureUserRecord(fbUser);
+  updateHeaderChip(fbUser);
+
+  const isAdminAcct = Auth.isAdmin(fbUser.email);
+  document.getElementById('btnSwitchRole').classList.toggle('hidden', !isAdminAcct);
+  document.getElementById('btnAdminLink').classList.toggle('hidden', !isAdminAcct);
+
+  // If user landed on Google step, process them now
+  if (_step === 'stepGoogle' || _step === 'stepWelcome') {
+    const dbUser = DB.getUserByID(fbUser.uid);
+    if (dbUser?.isBlocked) { goTo('stepBlocked'); return; }
+    _userName  = fbUser.displayName || fbUser.email.split('@')[0];
+    _userPhoto = fbUser.photoURL || null;
+    _affil     = dbUser?.affiliation || '';
+    _userType  = dbUser?.userType    || 'Faculty';
+    if (!_affil) goTo('stepType');
+    else { fillPurposeHeader(); goTo('stepPurpose'); }
+  }
+});
+
+function updateHeaderChip(fbUser) {
+  const chip = document.getElementById('hdrChip');
+  if (!fbUser) { chip.classList.remove('show'); return; }
+  const av = document.getElementById('hdrAv');
+  av.innerHTML = fbUser.photoURL
+    ? `<img src="${fbUser.photoURL}" alt="">`
+    : (fbUser.displayName || fbUser.email).charAt(0).toUpperCase();
+  document.getElementById('hdrName').textContent = fbUser.displayName || fbUser.email.split('@')[0];
+  chip.classList.add('show');
+}
+
+// ── STEP NAVIGATION ───────────────────────────────────────────
+function goTo(id) {
+  document.getElementById(_step).classList.remove('active');
+  document.getElementById(_step).classList.add('hidden');
+  document.getElementById(id).classList.remove('hidden');
+  document.getElementById(id).classList.add('active');
+  _step = id;
+  if (id === 'stepManual')      setTimeout(() => document.getElementById('manualId').focus(), 80);
+  if (id === 'stepAffiliation') { renderColleges(); document.getElementById('collegeSearch').value = ''; }
+}
+
+// ── PROCESS RFID / SCHOOL ID ──────────────────────────────────
+function processID(code) {
+  if (_step === 'stepSuccess') return;
+  _rfid = code;
+  const u = DB.getUserByRFID(code) || DB.getUserBySchoolId(code);
+  if (!u) { showToast('ID not recognised — please register with the Admin.', true); return; }
+  if (u.isBlocked) { goTo('stepBlocked'); return; }
+  _userName  = u.name;
+  _userPhoto = u.photoURL || null;
+  _affil     = u.userAffiliation || u.affiliation || '';
+  _userType  = u.userType;
+  fillPurposeHeader();
+  goTo('stepPurpose');
+}
+
+// ── MANUAL ID ─────────────────────────────────────────────────
+document.getElementById('manualId').addEventListener('keydown', e => {
+  if (e.key === 'Enter') handleManualID();
+});
+function handleManualID() {
+  const v = document.getElementById('manualId').value.trim();
+  if (!v) { showToast('Please enter your ID number.', true); return; }
+  processID(v);
+}
+
+// ── GOOGLE SIGN-IN ON TERMINAL ────────────────────────────────
+async function handleGoogleSignIn() {
+  const btn = document.getElementById('btnGoogleSignIn');
+  btn.disabled = true;
+  btn.innerHTML = '<div class="spin"></div> Signing in…';
+  try {
+    const result = await Auth.signIn();
+    // Domain check
+    if (!Auth.isNEUEmail(result.user.email)) {
+      await Auth.signOut();
+      showToast('@gmail.com accounts are not allowed. Use your @neu.edu.ph account.', true);
+      resetGoogleBtn();
+      return;
+    }
+    // onAuthStateChanged will handle routing
+  } catch (err) {
+    if (err.code !== 'auth/popup-closed-by-user' && err.code !== 'auth/cancelled-popup-request')
+      showToast('Sign-in failed. Please try again.', true);
+    resetGoogleBtn();
+  }
+}
+function resetGoogleBtn() {
+  const btn = document.getElementById('btnGoogleSignIn');
+  btn.disabled = false;
+  btn.innerHTML = `<svg width="17" height="17" viewBox="0 0 24 24"><path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/><path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/><path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/><path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/></svg>Sign in with NEU Account`;
+}
+
+// ── TYPE / AFFILIATION ────────────────────────────────────────
+function pickType(t) { _userType = t; goTo('stepAffiliation'); }
+
+function renderColleges() {
+  const q = document.getElementById('collegeSearch').value.toLowerCase();
+  let html = '';
+  Object.entries(COLLEGES).forEach(([cat, list]) => {
+    const f = list.filter(c => c.toLowerCase().includes(q));
+    if (!f.length) return;
+    html += `<div class="cc">${cat}</div>`;
+    f.forEach(c => {
+      html += `<button class="cb" onclick="pickCollege('${c.replace(/'/g,"\\'")}')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>${c}
+      </button>`;
+    });
+  });
+  document.getElementById('collegeList').innerHTML =
+    html || '<p style="text-align:center;padding:20px;color:var(--muted);font-size:12px;">No results.</p>';
+}
+
+function pickCollege(c) {
+  _affil = c;
+  fillPurposeHeader();
+  goTo('stepPurpose');
+}
+
+// ── PURPOSE STEP ──────────────────────────────────────────────
+function fillPurposeHeader() {
+  const av = document.getElementById('puAv');
+  if (_userPhoto) av.innerHTML = `<img src="${_userPhoto}" alt="">`;
+  else av.textContent = (_userName || 'V').split(' ').map(w => w[0]).join('').substring(0, 2).toUpperCase();
+
+  document.getElementById('puName').textContent = _userName || 'Visitor';
+  document.getElementById('puSub').textContent  = [_affil, _userType].filter(Boolean).join(' • ') || '—';
+
+  const purposes = DB.getSettings().purposes ||
+    ['Reading Books', 'Research in Thesis', 'Use of Computer', 'Doing Assignments'];
+
+  document.getElementById('pgrid').innerHTML = purposes.map(p =>
+    `<button class="pbtn" onclick="submitLog('${p.replace(/'/g, "\\'")}')">
+       <span class="pl">Library Activity</span>
+       <span class="pn">${p}</span>
+     </button>`
+  ).join('');
+}
+
+// ── SUBMIT LOG ────────────────────────────────────────────────
+function submitLog(purpose) {
+  document.querySelectorAll('.pbtn').forEach(b => b.disabled = true);
+
+  DB.addLog({
+    userId:          _signedInUser ? _signedInUser.uid : (_rfid ? `rfid_${_rfid}` : 'walkin'),
+    userName:        _userName || (_rfid ? `ID: ${_rfid}` : 'Visitor'),
+    userAffiliation: _affil,
+    userType:        _userType || 'Student',
+    rfidTagNumber:   _rfid || null,
+    purposeOfVisit:  purpose,
+    schoolYear:      settings.schoolYear || '2024-2025',
+    semester:        settings.semester   || '1st'
+  });
+
+  // ── Personalised success screen ────────────────────────
+  document.getElementById('successName').textContent =
+    _userName ? `Hello, ${_userName}!` : '';
+
+  const isAdminAcct = _signedInUser && Auth.isAdmin(_signedInUser.email);
+
+  document.getElementById('successBtns').innerHTML = isAdminAcct
+    ? `<a href="admin.html" class="btn-fin">
+         <svg style="width:18px;height:18px;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><path d="M14 14h3v3M17 14h3M14 17h3v3"/></svg>
+         Open Dashboard
+       </a>
+       <button class="btn-reset" id="resetBtn" onclick="resetTerminal()">Exit & Reset (10s)</button>`
+    : `<button class="btn-fin" onclick="location.href='index.html'">
+         <svg style="width:18px;height:18px;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+         Finish
+       </button>
+       <button class="btn-reset" id="resetBtn" onclick="resetTerminal()">Exit & Reset (10s)</button>`;
+
+  goTo('stepSuccess');
+  startCountdown(10);
+}
+
+// ── COUNTDOWN ─────────────────────────────────────────────────
+function startCountdown(s) {
+  clearInterval(_cdInt);
+  let rem = s;
+  _cdInt = setInterval(() => {
+    rem--;
+    const btn = document.getElementById('resetBtn');
+    if (btn) btn.textContent = `Exit & Reset (${rem}s)`;
+    if (rem <= 0) { clearInterval(_cdInt); resetTerminal(); }
+  }, 1000);
+}
+
+// ── RESET ─────────────────────────────────────────────────────
+function resetTerminal() {
+  clearInterval(_cdInt);
+  _userName = ''; _userPhoto = null; _userType = null;
+  _affil = ''; _rfid = ''; _signedInUser = Auth.currentUser();
+  document.getElementById('manualId').value = '';
+  history.replaceState(null, '', 'terminal.html');
+  goTo('stepWelcome');
+}
+
+// ── SIGN OUT ──────────────────────────────────────────────────
+async function doSignOut() {
+  await Auth.signOut();
+  location.href = 'index.html';
+}
+
+// ── TOAST ─────────────────────────────────────────────────────
+function showToast(msg, err = false) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.className = 'toast show' + (err ? ' err' : '');
+  clearTimeout(t._t);
+  t._t = setTimeout(() => t.classList.remove('show'), 3500);
+}
+</script>
+</body>
+</html>
