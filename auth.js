@@ -19,14 +19,12 @@
 
 const FIREBASE_CONFIG = {
   apiKey:            "AIzaSyAHxgfWkXhOl-cFXrqvQAWC_SLkn_cJGS8",
-  authDomain:        "neulib-fc97e.firebaseapp.com",
+  authDomain:        "ericjoshuamorilla.github.io",
   projectId:         "neulib-fc97e",
   storageBucket:     "neulib-fc97e.firebasestorage.app",
   messagingSenderId: "992375306505",
   appId:             "1:992375306505:web:ed6f114890a981c09ffbd8"
 };
-
-const GOOGLE_CLIENT_ID = '893098672005-scu9icgbapne34q51j0o8029mkfbbfvo.apps.googleusercontent.com';
 
 // ── Authorised admin accounts (both roles: user + admin) ─────
 const ADMIN_EMAILS = [
@@ -88,8 +86,8 @@ const Auth = {
   async signOut() {
     const auth = _initFirebase();
     if (auth) await auth.signOut().catch(() => {});
-    sessionStorage.removeItem(_SK);
-    sessionStorage.removeItem(_ARK);
+    localStorage.removeItem(_SK);
+    localStorage.removeItem(_ARK);
   },
 
   /** Returns the current Firebase User, or null. */
@@ -114,20 +112,20 @@ const Auth = {
       name:  fbUser.displayName || fbUser.email.split("@")[0],
       photo: fbUser.photoURL || null
     };
-    sessionStorage.setItem(_SK, JSON.stringify(s));
+    localStorage.setItem(_SK, JSON.stringify(s));
     return s;
   },
 
   getSession() {
-    try { return JSON.parse(sessionStorage.getItem(_SK)) || null; }
+    try { return JSON.parse(localStorage.getItem(_SK)) || null; }
     catch { return null; }
   },
 
   // ── Active role ─────────────────────────────────────────────
 
-  getActiveRole()   { return sessionStorage.getItem(_ARK) || null; },
-  setActiveRole(r)  { sessionStorage.setItem(_ARK, r); },
-  clearActiveRole() { sessionStorage.removeItem(_ARK); },
+  getActiveRole()   { return localStorage.getItem(_ARK) || null; },
+  setActiveRole(r)  { localStorage.setItem(_ARK, r); },
+  clearActiveRole() { localStorage.removeItem(_ARK); },
 
   // ── Local DB sync ───────────────────────────────────────────
 
