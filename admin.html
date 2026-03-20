@@ -1,366 +1,99 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>NEU – Admin Dashboard</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-  
-  <!-- Firebase SDKs — must load synchronously -->
-  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
-  
-  <!-- Charts & PDF — deferred -->
-  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js" defer></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js" defer></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js" defer></script>
+// Replace these functions with async versions:
 
-  <!-- Your existing styles — unchanged -->
-  <style>/* ... your existing CSS ... */</style>
-</head>
-<body>
-
-<!-- Your existing HTML structure — unchanged until scripts -->
-
-<script src="data.js"></script>
-<script src="auth.js"></script>
-<script>
-  // Wait for Firebase & DB to initialize
-  let isDBReady = false;
-  
-  // COLLEGES_DATA — unchanged
-  const COLLEGES_DATA = {
-    "Undergraduate Colleges": [
-      "College of Accountancy","College of Agriculture","College of Arts and Sciences",
-      "College of Business Administration","College of Communication",
-      "College of Informatics and Computing Studies","College of Criminology",
-      "College of Education","College of Engineering and Architecture",
-      "College of Medical Technology","College of Midwifery","College of Music",
-      "College of Nursing","College of Physical Therapy","College of Respiratory Therapy"
-    ],
-    "Professional and Graduate Schools": [
-      "College of Law","College of Medicine",
-      "School of International Relations","School of Graduate Studies"
-    ]
-  };
-  const ALL_COLLEGES = [...COLLEGES_DATA["Undergraduate Colleges"], ...COLLEGES_DATA["Professional and Graduate Schools"]];
-
-  // ── FIXED: IMMEDIATE SESSION CHECK (no blocking) ─────────
-  function _showLogin() {
-    document.getElementById('loginScreen').style.display = 'flex';
-    document.getElementById('app').classList.remove('show');
-  }
-
-  function _showApp() {
-    document.getElementById('loginScreen').style.display = 'none';
-    document.getElementById('app').classList.add('show');
-  }
-
-  // Check local session FIRST (instant)
-  let _sess = null;
+async function loadStats() {
   try {
-    const _raw = localStorage.getItem('neu_session');
-    _sess = _raw ? JSON.parse(_raw) : null;
-  } catch(e) { _sess = null; }
+    const { s, e } = getRange();
+    let logs = await DB.getLogsInRange(s, e);
 
-  if (_sess && _sess.email && Auth.isAdmin(_sess.email)) {
-    populateSidebarUser(_sess);
-    _showApp();
-  } else {
-    _showLogin();
-  }
-
-  // ── FIXED: NON-BLOCKING FIREBASE + DB INIT ───────────────
-  async function initAppData() {
-    try {
-      // Wait for DB to be ready
-      while (!isDBReady && !DB.db) {
-        await new Promise(r => setTimeout(r, 100));
-      }
-      
-      // Load all data in parallel
-      await Promise.allSettled([
-        initSettings(),
-        loadStats(),
-        renderUsers(),
-        populateCollegeSelects()
-      ]);
-      
-      console.log('[Admin] ✅ All data loaded');
-    } catch(e) {
-      console.error('[initAppData] error:', e);
-      toast('Dashboard loaded with limited data.', 'ok');
-    }
-  }
-
-  // Watch for DB readiness
-  const dbReadyCheck = setInterval(() => {
-    if (isDBReady || DB.db) {
-      clearInterval(dbReadyCheck);
-      if (document.getElementById('app').classList.contains('show')) {
-        initAppData();
-      }
-    }
-  }, 100);
-
-  // Signal from data.js when ready
-  window.DB_READY = () => { isDBReady = true; };
-
-  // Firebase auth listener (background)
-  Auth.onAuthStateChanged(async fbUser => {
-    if (!fbUser) return;
+    const fp = document.getElementById('filterPurpose').value;
+    const ft = document.getElementById('filterType').value;
+    const fc = document.getElementById('filterCollege').value;
     
-    if (!Auth.isNEUEmail(fbUser.email) || !Auth.isAdmin(fbUser.email)) {
-      await Auth.signOut();
-      _showLogin();
-      showLoginErr('Access denied.');
-      return;
-    }
+    if (fp !== 'all') logs = logs.filter(l => l.purposeOfVisit === fp);
+    if (ft !== 'all') logs = logs.filter(l => l.userType === ft);
+    if (fc !== 'all') logs = logs.filter(l => l.userAffiliation === fc);
 
-    Auth.saveSession(fbUser);
-    await Auth.ensureUserRecord(fbUser);
-    populateSidebarUser(fbUser);
-    
-    if (!document.getElementById('app').classList.contains('show')) {
-      _showApp();
-    } else {
-      initAppData(); // Refresh data if already on page
-    }
-  });
-
-  // ── Your existing login functions — unchanged ────────────
-  async function doLogin() {
-    const btn = document.getElementById('btnAdminSignIn');
-    btn.disabled = true;
-    btn.innerHTML = '<div style="display:inline-block;width:14px;height:14px;border:2px solid rgba(57,96,171,.2);border-top-color:#3960AB;border-radius:50%;animation:spin .6s linear infinite;vertical-align:middle;margin-right:6px;"></div> Signing in…';
-    
-    try {
-      await Auth.signIn();
-    } catch (err) {
-      btn.disabled = false;
-      btn.innerHTML = '<svg width="18" height="18" viewBox="0 0 24 24">...</svg>Sign in with Google';
-      if (err.code !== 'auth/popup-closed-by-user' && err.code !== 'auth/cancelled-popup-request')
-        showLoginErr('Sign-in failed. Please try again.');
-    }
-  }
-
-  function populateSidebarUser(userOrSession) {
-    const name  = userOrSession.displayName || userOrSession.name  || userOrSession.email?.split('@')[0] || 'Admin';
-    const email = userOrSession.email || '';
-    
-    document.getElementById('sbName').textContent  = name;
-    document.getElementById('sbEmail').textContent = email;
-    const av = document.getElementById('sbAva');
-    if (userOrSession.photoURL || userOrSession.photo) {
-      av.innerHTML = `<img src="${userOrSession.photoURL || userOrSession.photo}" referrerpolicy="no-referrer" alt="" style="width:100%;height:100%;object-fit:cover;border-radius:50%;">`;
-    } else {
-      av.textContent = name.charAt(0).toUpperCase();
-    }
-  }
-
-  function showLoginErr(msg) {
-    const el = document.getElementById('loginErr');
-    el.textContent = msg;
-    el.style.display = 'block';
-    _showLogin();
-  }
-
-  async function doLogout() {
-    await Auth.signOut();
-    location.href = 'index.html';
-  }
-
-  // ── FIXED: ASYNC DATA FUNCTIONS ──────────────────────────
-  let filteredLogs = [];
-  let curPage = 0;
-  const PG = 15;
-  let purposeChartInstance = null, typeChartInstance = null;
-
-  function onPeriodChange() {
-    const v = document.getElementById('filterPeriod').value;
-    const cd = document.getElementById('customDate');
-    cd.classList.toggle('show', v==='day');
-    if (v==='day' && !document.getElementById('filterDate').value) {
-      document.getElementById('filterDate').value = new Date().toISOString().slice(0,10);
-    }
-    loadStats();
-  }
-
-  function getRange() {
-    const v = document.getElementById('filterPeriod').value;
-    const now = new Date();
-    if (v === 'day') {
-      const d = document.getElementById('filterDate').value || now.toISOString().slice(0,10);
-      const s = new Date(d+'T00:00:00'); 
-      const e = new Date(d+'T23:59:59');
-      return { s, e };
-    } else if (v === 'week') {
-      const s = new Date(now); 
-      s.setDate(now.getDate()-7); 
-      s.setHours(0,0,0,0);
-      return { s, e: now };
-    }
-    return { s: new Date('2000-01-01'), e: now };
-  }
-
-  // ✅ FIXED: Async loadStats
-  async function loadStats() {
-    try {
-      const { s, e } = getRange();
-      let logs = await DB.getLogsInRange(s, e);
-
-      const fp = document.getElementById('filterPurpose').value;
-      const ft = document.getElementById('filterType').value;
-      const fc = document.getElementById('filterCollege').value;
-      
-      if (fp !== 'all') logs = logs.filter(l => l.purposeOfVisit === fp);
-      if (ft !== 'all') logs = logs.filter(l => l.userType === ft);
-      if (fc !== 'all') logs = logs.filter(l => l.userAffiliation === fc);
-
-      filteredLogs = logs;
-      curPage = 0;
-      updateStats(logs);
-      renderCharts(logs);
-      renderLogsTable();
-    } catch(e) {
-      console.error('[loadStats] error:', e);
-      toast('Failed to load stats.', 'err');
-    }
-  }
-
-  function updateStats(logs) {
-    document.getElementById('statTotal').textContent = logs.length;
-    document.getElementById('statStudents').textContent = logs.filter(l=>l.userType==='Student').length;
-    document.getElementById('statFaculty').textContent = logs.filter(l=>l.userType==='Faculty'||l.userType==='Staff').length;
-    const pm = {};
-    logs.forEach(l => { pm[l.purposeOfVisit] = (pm[l.purposeOfVisit]||0)+1; });
-    const top = Object.entries(pm).sort((a,b)=>b[1]-a[1])[0];
-    document.getElementById('statTopPurpose').textContent = top ? top[0] : 'N/A';
-  }
-
-  function renderCharts(logs) {
-    const pm = {}, tm = {};
-    logs.forEach(l => {
-      pm[l.purposeOfVisit] = (pm[l.purposeOfVisit]||0)+1;
-      tm[l.userType] = (tm[l.userType]||0)+1;
-    });
-
-    const COLORS = ['#3960AB','#3CC2DD','#6366f1','#10b981','#f97316'];
-
-    if (purposeChartInstance) purposeChartInstance.destroy();
-    const pCtx = document.getElementById('purposeChart').getContext('2d');
-    purposeChartInstance = new Chart(pCtx, {
-      type: 'doughnut',
-      data: {
-        labels: Object.keys(pm),
-        datasets: [{ data: Object.values(pm), backgroundColor: COLORS, borderWidth: 2, borderColor: '#fff' }]
-      },
-      options: { 
-        responsive:true, 
-        maintainAspectRatio:false, 
-        plugins:{ 
-          legend:{ 
-            position:'bottom', 
-            labels:{ font:{family:'Space Grotesk',size:11}, padding:12 } 
-          } 
-        } 
-      }
-    });
-
-    if (typeChartInstance) typeChartInstance.destroy();
-    const tCtx = document.getElementById('typeChart').getContext('2d');
-    typeChartInstance = new Chart(tCtx, {
-      type: 'bar',
-      data: {
-        labels: Object.keys(tm),
-        datasets: [{ data: Object.values(tm), backgroundColor: '#3960AB', borderRadius: 5 }]
-      },
-      options: {
-        responsive:true, 
-        maintainAspectRatio:false,
-        plugins:{ legend:{ display:false } },
-        scales:{
-          x:{ grid:{ display:false }, ticks:{ font:{ family:'Space Grotesk' } } },
-          y:{ grid:{ color:'#f1f5f9' }, ticks:{ font:{ family:'Space Grotesk' } }, beginAtZero:true }
-        }
-      }
-    });
-  }
-
-  function renderLogsTable() {
-    const tbody = document.getElementById('logsTableBody');
-    const total = filteredLogs.length;
-    const s = curPage * PG, e = Math.min(s+PG, total);
-    const slice = filteredLogs.slice(s, e);
-
-    if (!total) {
-      tbody.innerHTML = '<tr><td colspan="5" class="empty-row">No records match your current filters.</td></tr>';
-      document.getElementById('pgInfo').textContent = '0 records';
-      document.getElementById('btnPrev').disabled = true;
-      document.getElementById('btnNext').disabled = true;
-      return;
-    }
-
-    tbody.innerHTML = slice.map(log => {
-      const d = new Date(log.timestamp?.toDate ? log.timestamp.toDate() : log.timestamp);
-      const fmt = d.toLocaleDateString('en-PH',{month:'short',day:'numeric'}) + ', ' + d.toLocaleTimeString('en-PH',{hour:'2-digit',minute:'2-digit'});
-      return `<tr>
-        <td><strong>${esc(log.userName||'—')}</strong></td>
-        <td style="color:var(--muted);font-size:12px;">${esc(log.userAffiliation||'—')}</td>
-        <td><span class="badge badge-type">${esc(log.userType||'—')}</span></td>
-        <td><span class="badge badge-purpose">${esc(log.purposeOfVisit||'—')}</span></td>
-        <td style="text-align:right;font-size:11px;color:var(--muted);">${fmt}</td>
-      </tr>`;
-    }).join('');
-
-    document.getElementById('pgInfo').textContent = `${s+1}–${e} of ${total}`;
-    document.getElementById('btnPrev').disabled = curPage===0;
-    document.getElementById('btnNext').disabled = e>=total;
-  }
-
-  function changePg(d) {
-    const max = Math.ceil(filteredLogs.length/PG)-1;
-    curPage = Math.max(0, Math.min(curPage+d, max));
+    filteredLogs = logs;
+    curPage = 0;
+    updateStats(logs);
+    renderCharts(logs);
     renderLogsTable();
+  } catch(e) {
+    console.error('[loadStats] error:', e);
+    toast('Failed to load stats.', 'err');
   }
+}
 
-  // ✅ FIXED: Async renderUsers
-  async function renderUsers() {
-    try {
-      const q = (document.getElementById('userSearch').value||'').toLowerCase();
-      const rf = document.getElementById('roleFilter').value;
-      const users = await DB.getUsers();
-      
-      let filtered = users.filter(u => {
-        const ms = (u.name||'').toLowerCase().includes(q) || (u.schoolId||'').toLowerCase().includes(q);
-        const mr = rf==='all' || u.role===rf;
-        return ms && mr;
-      });
+async function renderUsers() {
+  try {
+    const q = (document.getElementById('userSearch').value||'').toLowerCase();
+    const rf = document.getElementById('roleFilter').value;
+    const users = await DB.getUsers();
+    
+    let filtered = users.filter(u => {
+      const ms = (u.name||'').toLowerCase().includes(q) || (u.schoolId||'').toLowerCase().includes(q);
+      const mr = rf==='all' || u.role===rf;
+      return ms && mr;
+    });
 
-      const tbody = document.getElementById('usersTableBody');
-      if (!filtered.length) { 
-        tbody.innerHTML = '<tr><td colspan="4" class="empty-row">No users found.</td></tr>'; 
-        return; 
-      }
+    const tbody = document.getElementById('usersTableBody');
+    if (!filtered.length) { 
+      tbody.innerHTML = '<tr><td colspan="4" class="empty-row">No users found.</td></tr>'; 
+      return; 
+    }
 
-      tbody.innerHTML = filtered.map(u => {
-        const init = (u.name||'?').split(' ').map(w=>w[0]).join('').substring(0,2).toUpperCase();
-        const blocked = !!u.isBlocked;
-        return `<tr>
-          <td>
-            <div style="display:flex;align-items:center;gap:10px;">
-              <div style="width:38px;height:38px;border-radius:50%;background:var(--primary-light);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:14px;color:var(--primary);flex-shrink:0;">${init}</div>
-              <div><strong style="font-size:13px;">${esc(u.name||'Unknown')}</strong><div style="font-size:11px;color:var(--muted);font-family:monospace;">${esc(u.schoolId||'NO ID')}</div></div>
-            </div>
-          </td>
-          <td>
-            <div style="font-size:11px;font-weight:500;margin-bottom:4px;">${esc(u.institutionalEmail||'—')}</div>
-            <div style="display:flex;gap:5px;"><span class="badge badge-type">${esc(u.userType||'—')}</span><span class="badge badge-purpose" style="color:var(--accent);">${esc(u.role||'visitor')}</span></div>
-          </td>
-          <td><span class="badge ${blocked?'badge-blocked':'badge-active'}">${blocked?'Blocked':'Active'}</span></td>
-          <td style="text-align:right;">
-            <button class="btn-icon-only" onclick="openUserModal('${u.id}')" title="Edit"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>
-            <button class="btn-icon-only ${blocked?'':'del'}" onclick="toggleBlock('${u.id}')" title="${blocked?'Unblock':'Block'}">${blocked ? '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="m9 12 2 2 4-4"/></svg>' : '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 
+    // Rest of renderUsers() stays the same...
+    tbody.innerHTML = filtered.map(u => {
+      // ... existing HTML template
+    }).join('');
+  } catch(e) {
+    console.error('[renderUsers] error:', e);
+    toast('Failed to load users.', 'err');
+  }
+}
+
+async function initSettings() {
+  try {
+    const s = await DB.getSettings();
+    document.getElementById('openingTime').value = s.openingTime || '08:00';
+    document.getElementById('closingTime').value = s.closingTime || '21:00';
+    document.getElementById('schoolYear').value = s.schoolYear || '2024-2025';
+    document.getElementById('semesterSel').value = s.semester || '1st';
+    await renderPurposes();
+    document.getElementById('filterDate').value = new Date().toISOString().slice(0,10);
+  } catch(e) {
+    console.error('[initSettings] error:', e);
+  }
+}
+
+async function saveUser() {
+  try {
+    const id = document.getElementById('editId').value;
+    const name = document.getElementById('mName').value.trim();
+    if (!name) { toast('Name is required.','err'); return; }
+    
+    const userData = {
+      id: id || 'user_'+Date.now(),
+      name, 
+      schoolId: document.getElementById('mSchoolId').value.trim(),
+      rfidTagNumber: document.getElementById('mRFID').value.trim(),
+      institutionalEmail: document.getElementById('mEmail').value.trim(),
+      userType: document.getElementById('mType').value,
+      role: document.getElementById('mRole').value,
+      affiliation: document.getElementById('mCollege').value,
+      isBlocked: id ? (await DB.getUserByID(id))?.isBlocked || false : false
+    };
+    
+    const success = await DB.upsertUser(userData);
+    if (success) {
+      closeModal();
+      renderUsers();
+      toast(id ? 'User updated.' : 'User created.', 'ok');
+    } else {
+      toast('Failed to save user.', 'err');
+    }
+  } catch(e) {
+    console.error('[saveUser] error:', e);
+    toast('Failed to save user.', 'err');
+  }
+}
