@@ -11,7 +11,7 @@
 //  5. Paste the Client ID below (replace YOUR_GOOGLE_CLIENT_ID)
 // =============================================================
 
-
+const GOOGLE_CLIENT_ID = '893098672005-scu9icgbapne34q51j0o8029mkfbbfvo.apps.googleusercontent.com';
 // ── ADMIN EMAILS ─────────────────────────────────────────────
 // Both hold BOTH roles. After sign-in they choose which to use.
 const ADMIN_EMAILS = [
