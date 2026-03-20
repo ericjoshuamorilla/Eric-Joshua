@@ -219,7 +219,8 @@
 <div id="pageLoader">
   <div class="pl-badge">NEU</div>
   <div class="pl-spin"></div>
-  <p>Loading your dashboard…</p>
+  <p id="pageLoaderMsg">Loading your dashboard…</p>
+  <p id="pageLoaderDebug" style="font-size:10px;color:#94a3b8;margin-top:4px;max-width:300px;text-align:center;"></p>
 </div>
 
 <!-- LOGIN -->
@@ -558,36 +559,66 @@
   const ALL_COLLEGES = [...COLLEGES_DATA["Undergraduate Colleges"], ...COLLEGES_DATA["Professional and Graduate Schools"]];
 
   // ── AUTH — Firebase Google Sign-In, admin-only ───────────
-  // If user just picked 'admin' role from index.html, we know they're
-  // already authenticated — keep pageLoader visible while Firebase confirms.
-  // Only show loginScreen if Firebase says no user exists.
-  Auth.onAuthStateChanged(async fbUser => {
-    // Hide the full-page loader
-    document.getElementById('pageLoader').style.display = 'none';
+  let _authResolved = false;
 
-    if (!fbUser) {
-      // Truly not signed in — show login
+  function _dbg(msg) {
+    console.log('[NEU Admin]', msg);
+    const el = document.getElementById('pageLoaderDebug');
+    if (el) el.textContent = msg;
+  }
+
+  _dbg('Scripts loaded, waiting for Firebase…');
+
+  // Hard safety net: if Firebase takes >8s, force show login screen
+  setTimeout(() => {
+    if (!_authResolved) {
+      _authResolved = true;
+      _dbg('Timeout — showing login screen');
+      document.getElementById('pageLoader').style.display = 'none';
       document.getElementById('loginScreen').style.display = 'flex';
-      document.getElementById('app').classList.remove('show');
-      return;
     }
-    if (!Auth.isNEUEmail(fbUser.email)) {
-      await Auth.signOut();
-      showLoginErr('@gmail.com and personal accounts are not allowed.');
-      return;
-    }
-    if (!Auth.isAdmin(fbUser.email)) {
-      await Auth.signOut();
-      showLoginErr('Access denied — your account does not have admin privileges.');
-      return;
-    }
-    // Valid admin — go straight to dashboard
-    Auth.saveSession(fbUser);
-    Auth.ensureUserRecord(fbUser);
-    Auth.setActiveRole('admin');
-    populateSidebarUser(fbUser);
-    showApp();
-  });
+  }, 8000);
+
+  try {
+    _dbg('Calling Auth.onAuthStateChanged…');
+    Auth.onAuthStateChanged(async fbUser => {
+      if (_authResolved) return;
+      _authResolved = true;
+      _dbg(fbUser ? `User: ${fbUser.email}` : 'No user found');
+      document.getElementById('pageLoader').style.display = 'none';
+
+      if (!fbUser) {
+        document.getElementById('loginScreen').style.display = 'flex';
+        document.getElementById('app').classList.remove('show');
+        return;
+      }
+      if (!Auth.isNEUEmail(fbUser.email)) {
+        await Auth.signOut();
+        showLoginErr('&#64;gmail.com and personal accounts are not allowed.');
+        return;
+      }
+      if (!Auth.isAdmin(fbUser.email)) {
+        await Auth.signOut();
+        showLoginErr('Access denied — your account does not have admin privileges.');
+        return;
+      }
+      try {
+        Auth.saveSession(fbUser);
+        Auth.ensureUserRecord(fbUser);
+        Auth.setActiveRole('admin');
+        populateSidebarUser(fbUser);
+        showApp();
+      } catch (innerErr) {
+        console.error('[Admin] showApp error:', innerErr);
+        showLoginErr('Dashboard failed to load. Please sign in again. Error: ' + innerErr.message);
+      }
+    });
+  } catch (outerErr) {
+    console.error('[Admin] Auth init error:', outerErr);
+    _dbg('Auth init error: ' + outerErr.message);
+    document.getElementById('pageLoader').style.display = 'none';
+    document.getElementById('loginScreen').style.display = 'flex';
+  }
 
   async function doLogin() {
     const btn = document.getElementById('btnAdminSignIn');
@@ -624,10 +655,10 @@
     document.getElementById('pageLoader').style.display = 'none';
     document.getElementById('loginScreen').style.display = 'none';
     document.getElementById('app').classList.add('show');
-    initSettings();
-    loadStats();
-    renderUsers();
-    populateCollegeSelects();
+    try { initSettings(); } catch(e) { console.error('[showApp] initSettings:', e); }
+    try { loadStats(); }    catch(e) { console.error('[showApp] loadStats:', e); }
+    try { renderUsers(); }  catch(e) { console.error('[showApp] renderUsers:', e); }
+    try { populateCollegeSelects(); } catch(e) { console.error('[showApp] populateCollegeSelects:', e); }
   }
 
   async function doLogout() {
