@@ -18,12 +18,12 @@
 // ================================================================
 
 const FIREBASE_CONFIG = {
-  apiKey:            "YOUR_API_KEY",
-  authDomain:        "YOUR_PROJECT_ID.firebaseapp.com",
-  projectId:         "YOUR_PROJECT_ID",
-  storageBucket:     "YOUR_PROJECT_ID.appspot.com",
-  messagingSenderId: "YOUR_MESSAGING_SENDER_ID",
-  appId:             "YOUR_APP_ID"
+  apiKey:            "AIzaSyAHxgfWkXhOl-cFXrqvQAWC_SLkn_cJGS8",
+  authDomain:        "neulib-fc97e.firebaseapp.com",
+  projectId:         "neulib-fc97e",
+  storageBucket:     "neulib-fc97e.firebasestorage.app",
+  messagingSenderId: "992375306505",
+  appId:             "1:992375306505:web:ed6f114890a981c09ffbd8"
 };
 
 const GOOGLE_CLIENT_ID = '893098672005-scu9icgbapne34q51j0o8029mkfbbfvo.apps.googleusercontent.com';
