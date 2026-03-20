@@ -129,8 +129,8 @@
           Sign in with Google
         </button>
         <p class="sib-note">
-          Use your <strong>@neu.edu.ph</strong> institutional account only.<br>
-          <span class="denied">@gmail.com accounts are not allowed.</span>
+          Use your <strong>&#64;neu.edu.ph</strong> institutional account only.<br>
+          <span class="denied">&#64;gmail.com accounts are not allowed.</span>
         </p>
       </div>
     </div>
@@ -224,7 +224,7 @@ Auth.onAuthStateChanged(async fbUser => {
   // Hard domain check — @gmail.com etc. get signed out immediately
   if (!Auth.isNEUEmail(fbUser.email)) {
     await Auth.signOut();
-    showErr('@gmail.com and personal accounts are not allowed.\nUse your @neu.edu.ph institutional account.');
+    showErr('&#64;gmail.com and personal accounts are not allowed.\nUse your &#64;neu.edu.ph institutional account.');
     $out.classList.remove('hidden');
     return;
   }
