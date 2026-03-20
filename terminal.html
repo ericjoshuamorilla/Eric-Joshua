@@ -258,8 +258,8 @@
       </div>
       <p class="gsb-error" id="gsbError"></p>
       <p class="gsb-note">
-        Use your <strong style="color:var(--primary);">@neu.edu.ph</strong> account only.
-        <span class="denied">@gmail.com accounts are not allowed.</span>
+        Use your <strong style="color:var(--primary);">&#64;neu.edu.ph</strong> account only.
+        <span class="denied">&#64;gmail.com accounts are not allowed.</span>
       </p>
       <button class="btn-ghost" style="margin-top:14px;" onclick="goTo('stepWelcome')">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m15 18-6-6 6-6"/></svg>Back
@@ -405,7 +405,7 @@ async function handleGoogleSignIn() {
     const fbUser = result.user;
     if (!Auth.isNEUEmail(fbUser.email)) {
       await Auth.signOut();
-      errEl.textContent = '@gmail.com accounts are not allowed. Use your @neu.edu.ph account.';
+      errEl.textContent = '&#64;gmail.com accounts are not allowed. Use your @neu.edu.ph account.';
       errEl.style.display = 'block';
       resetGoogleBtn(); return;
     }
