@@ -215,15 +215,19 @@
     }
   </style>
   <script>
-    // Stub all onclick functions so buttons never throw ReferenceError
-    // Real implementations are in the bottom script block
+    // Queue calls made before bottom script loads, replay them after
+    window._queue = {};
     ['showSection','switchTab','exportPDF','importJSON','saveSettings',
-     'resetSettings','openAddUser','saveUser','closeModal','toggleBlock',
-     'deleteUser','loadStats','renderUsers','exportJSON','toast',
-     'closeUserModal','showToast'].forEach(fn => {
-      if (!window[fn]) window[fn] = function() {
-        // Will be replaced by real implementation when bottom script loads
-        console.log('Waiting for script:', fn);
+     'resetSettings','openUserModal','saveUser','closeModal','toggleBlock',
+     'deleteUser','loadStats','renderUsers','exportJSON','showToast',
+     'closeUserModal','onPeriodChange','openAddUser','toast'].forEach(fn => {
+      window._queue[fn] = [];
+      window[fn] = function(...args) {
+        if (window._realFns && window._realFns[fn]) {
+          window._realFns[fn](...args);
+        } else {
+          window._queue[fn].push(args);
+        }
       };
     });
   </script>
@@ -940,16 +944,30 @@ const Auth = {
     location.href = 'index.html';
   }
 
+  // Register real implementations and replay any queued calls
+  window._realFns = {
+    showSection, switchTab, exportPDF, importJSON: function(e) {
+      const f = e.target.files[0]; if(f) DB.importJSON(f, (err) => { if(!err) { loadStats(); renderUsers(); showToast('Data imported successfully','success'); } else showToast('Import failed','error'); });
+    },
+    saveSettings, resetSettings, openUserModal, saveUser, closeModal,
+    toggleBlock, loadStats, renderUsers, exportJSON: () => DB.exportJSON(),
+    showToast, closeUserModal: closeModal, onPeriodChange, toast: showToast
+  };
+  // Replay any calls that happened before scripts loaded
+  Object.entries(window._queue||{}).forEach(([fn, calls]) => {
+    calls.forEach(args => { if(window._realFns[fn]) window._realFns[fn](...args); });
+  });
+
   // ── SECTION NAVIGATION ────────────────────────────────
   function showSection(s) {
     ['stats','users','settings'].forEach(id => {
-      document.getElementById(`sec${id.charAt(0).toUpperCase()+id.slice(1)}`).classList.toggle('active', id===s);
-      document.getElementById(`nav${s.charAt(0).toUpperCase()+s.slice(1)}`);
+      const sec = document.getElementById(`sec${id.charAt(0).toUpperCase()+id.slice(1)}`);
+      const nav = document.getElementById(`nav${id.charAt(0).toUpperCase()+id.slice(1)}`);
+      if (sec) sec.classList.toggle('active', id===s);
+      if (nav) nav.classList.toggle('active', id===s);
     });
-    document.getElementById(`sec${s.charAt(0).toUpperCase()+s.slice(1)}`).classList.add('active');
-    ['Stats','Users','Settings'].forEach(id => {
-      document.getElementById(`nav${id}`).classList.toggle('active', id.toLowerCase()===s);
-    });
+    if (s==='users') renderUsers();
+    if (s==='settings') initSettings();
   }
 
   // ── TABS ──────────────────────────────────────────────
