@@ -1,0 +1,529 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>NEU — Visitor Terminal</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <!-- Firebase SDKs (compat) -->
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
+  <style>
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+    :root{
+      --primary:#3960AB;--pl:rgba(57,96,171,.1);--accent:#3CC2DD;--al:rgba(60,194,221,.12);
+      --bg:#F1F5F9;--card:#fff;--border:#e2e8f0;--text:#0f172a;--muted:#64748b;--muted-bg:#f1f5f9;
+      --dest:#ef4444;--dest-l:rgba(239,68,68,.08);--success:#10b981;
+      --sh:0 1px 3px rgba(0,0,0,.06),0 8px 24px rgba(57,96,171,.08);
+      --sh-xl:0 8px 40px rgba(57,96,171,.15),0 1px 4px rgba(0,0,0,.06);
+    }
+    html,body{min-height:100%;font-family:'Space Grotesk',sans-serif;background:var(--bg);color:var(--text);}
+    button{font-family:inherit;cursor:pointer;}a{text-decoration:none;color:inherit;}
+
+    header{padding:14px 28px;display:flex;align-items:center;justify-content:space-between;}
+    .hbrand{display:flex;align-items:center;gap:9px;}
+    .hlogo{width:36px;height:36px;background:var(--primary);border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;color:#fff;}
+    .htitle{font-size:18px;font-weight:700;color:var(--primary);letter-spacing:-1px;}
+    .hright{display:flex;align-items:center;gap:7px;flex-wrap:wrap;}
+    .sem-badge{padding:4px 10px;background:#fff;border-radius:50px;font-size:10px;font-weight:700;color:var(--muted);border:1px solid var(--border);}
+
+    /* header chip */
+    .hchip{display:none;align-items:center;gap:6px;background:#fff;border:1px solid var(--border);border-radius:50px;padding:3px 9px 3px 4px;}
+    .hchip.show{display:flex;}
+    .hchip-av{width:22px;height:22px;border-radius:50%;background:linear-gradient(135deg,var(--primary),var(--accent));display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:700;color:#fff;overflow:hidden;flex-shrink:0;}
+    .hchip-av img{width:100%;height:100%;object-fit:cover;border-radius:50%;}
+    .hchip-name{font-size:10px;font-weight:600;max-width:110px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+    .btn-hso{background:transparent;border:none;padding:2px;color:var(--muted);cursor:pointer;border-radius:3px;transition:.15s;}
+    .btn-hso:hover{color:var(--dest);}
+    .btn-hso svg{width:11px;height:11px;display:block;}
+    .btn-hlink{display:flex;align-items:center;gap:4px;padding:4px 9px;border-radius:50px;background:transparent;border:1px solid var(--border);font-family:inherit;font-size:10px;font-weight:600;color:var(--muted);cursor:pointer;transition:.2s;text-decoration:none;}
+    .btn-hlink:hover{background:#fff;color:var(--text);}
+    .btn-hlink svg{width:10px;height:10px;}
+
+    main{display:flex;align-items:center;justify-content:center;padding:8px 20px 36px;min-height:calc(100vh - 72px);}
+    .card{background:var(--card);border-radius:26px;box-shadow:var(--sh-xl);width:100%;max-width:500px;overflow:hidden;}
+    .card-bar{height:4px;background:linear-gradient(90deg,var(--primary),var(--accent));}
+    .step{display:none;}
+    .step.active{display:block;animation:fu .28s ease;}
+    @keyframes fu{from{opacity:0;transform:translateY(7px);}to{opacity:1;transform:translateY(0);}}
+
+    /* WELCOME */
+    .wb{padding:34px 30px 42px;text-align:center;}
+    .scan-anim{width:104px;height:104px;position:relative;margin:0 auto 20px;display:flex;align-items:center;justify-content:center;}
+    .r1{position:absolute;inset:0;border-radius:50%;background:var(--pl);animation:rp 2.5s ease-in-out infinite;}
+    .r2{position:absolute;inset:8px;border-radius:50%;background:rgba(57,96,171,.07);animation:rp 2.5s ease-in-out infinite .4s;}
+    @keyframes rp{0%,100%{transform:scale(1);opacity:1;}50%{transform:scale(1.05);opacity:.7;}}
+    .iw{position:relative;width:70px;height:70px;border-radius:17px;background:#fff;border:2px solid var(--border);display:flex;align-items:center;justify-content:center;box-shadow:var(--sh);}
+    .iw svg{width:36px;height:36px;color:var(--primary);}
+    .wb h2{font-size:27px;font-weight:700;letter-spacing:-1px;margin-bottom:6px;}
+    .wb>p{font-size:13px;color:var(--muted);margin-bottom:22px;line-height:1.5;}
+    .scan-ready{display:flex;flex-direction:column;align-items:center;gap:3px;padding:13px 14px;background:var(--pl);border:2px dashed rgba(57,96,171,.18);border-radius:13px;margin-bottom:18px;animation:srp 2.5s ease-in-out infinite;}
+    @keyframes srp{0%,100%{background:var(--pl);}50%{background:rgba(57,96,171,.15);}}
+    .scan-ready svg{width:21px;height:21px;color:var(--primary);margin-bottom:1px;}
+    .scan-ready strong{font-size:11px;font-weight:700;color:var(--primary);}
+    .or-line{display:flex;align-items:center;gap:9px;margin:15px 0;color:var(--muted);font-size:9px;font-weight:700;letter-spacing:2px;text-transform:uppercase;}
+    .or-line::before,.or-line::after{content:'';flex:1;height:1px;background:var(--border);}
+    .mgrid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;}
+    .mbtn{height:56px;border-radius:11px;background:transparent;border:2px solid var(--border);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;transition:.2s;cursor:pointer;}
+    .mbtn:hover{border-color:var(--primary);background:var(--pl);}
+    .mbtn svg{width:16px;height:16px;color:var(--primary);}
+    .mbtn span{font-size:9px;font-weight:700;}
+
+    /* MANUAL */
+    .sb{padding:26px 30px 30px;}
+    .shd{text-align:center;margin-bottom:16px;}
+    .shd h2{font-size:23px;font-weight:700;letter-spacing:-1px;margin-bottom:3px;}
+    .shd p{font-size:12px;color:var(--muted);}
+    .big-input{width:100%;height:62px;text-align:center;font-size:27px;font-weight:700;font-family:'Space Grotesk',sans-serif;letter-spacing:4px;border:none;background:var(--muted-bg);border-radius:10px;color:var(--text);outline:none;margin-bottom:14px;transition:.2s;}
+    .big-input:focus{background:#eef2ff;outline:2px solid var(--primary);}
+    .big-input::placeholder{color:#cbd5e1;letter-spacing:0;font-size:16px;font-weight:400;}
+    .btn2{display:grid;grid-template-columns:1fr 2fr;gap:8px;}
+    .btn{display:flex;align-items:center;justify-content:center;gap:6px;font-family:inherit;font-size:12px;font-weight:600;border-radius:10px;padding:11px 14px;cursor:pointer;transition:.2s;border:none;}
+    .btn-p{background:var(--primary);color:#fff;}
+    .btn-p:hover:not(:disabled){background:#2d4f91;box-shadow:0 4px 12px rgba(57,96,171,.35);}
+    .btn-p:disabled{opacity:.5;cursor:not-allowed;}
+    .btn-s{background:transparent;border:2px solid var(--border);color:var(--muted);}
+    .btn-s:hover{background:var(--muted-bg);color:var(--text);}
+    .btn-ghost{width:100%;background:transparent;border:none;padding:9px;border-radius:9px;color:var(--muted);font-family:inherit;font-size:11px;font-weight:500;display:flex;align-items:center;justify-content:center;gap:4px;transition:.2s;cursor:pointer;}
+    .btn-ghost:hover{background:var(--muted-bg);color:var(--text);}
+    .btn-ghost svg{width:12px;height:12px;}
+
+    /* GOOGLE STEP */
+    .gsb{padding:30px 30px 34px;text-align:center;}
+    .gsb-icon{width:52px;height:52px;border-radius:13px;background:var(--pl);display:flex;align-items:center;justify-content:center;margin:0 auto 13px;}
+    .gsb-icon svg{width:26px;height:26px;color:var(--primary);}
+    .gsb h2{font-size:22px;font-weight:700;letter-spacing:-1px;margin-bottom:4px;}
+    .gsb>p{font-size:12px;color:var(--muted);margin-bottom:20px;line-height:1.5;}
+    .gsi-wrap{display:flex;justify-content:center;margin-bottom:10px;}
+    .gsi-loading{display:flex;align-items:center;justify-content:center;gap:7px;color:var(--muted);font-size:12px;padding:10px;}
+    .gsb-error{font-size:11px;color:var(--dest);background:var(--dest-l);border:1px solid rgba(239,68,68,.2);border-radius:8px;padding:8px 12px;margin-bottom:8px;display:none;line-height:1.5;}
+    .gsb-note{font-size:10px;color:var(--muted);line-height:1.4;}
+    .gsb-note .denied{color:var(--dest);}
+
+    /* TYPE */
+    .tgrid{display:grid;grid-template-columns:1fr 1fr;gap:9px;padding-bottom:5px;}
+    .tbtn{height:100px;border-radius:14px;background:transparent;border:2px solid var(--border);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:7px;transition:.2s;cursor:pointer;}
+    .tbtn:hover{border-color:var(--primary);background:var(--pl);}
+    .tbtn svg{width:27px;height:27px;}
+    .tbtn span{font-size:13px;font-weight:700;}
+    .tbtn.cb svg{color:var(--primary);}.tbtn.ct svg{color:var(--accent);}
+    .tbtn.cg svg{color:#94a3b8;}.tbtn.co svg{color:#f97316;}
+
+    /* AFFILIATION */
+    .sw{position:relative;margin-bottom:10px;}
+    .sw svg{position:absolute;left:10px;top:50%;transform:translateY(-50%);width:13px;height:13px;color:var(--muted);}
+    .si{width:100%;padding:9px 10px 9px 30px;background:var(--muted-bg);border:none;border-radius:9px;font-family:'Space Grotesk',sans-serif;font-size:12px;color:var(--text);outline:none;}
+    .si:focus{background:#eef2ff;outline:2px solid var(--primary);}
+    .cs{height:300px;overflow-y:auto;padding-right:2px;}
+    .cs::-webkit-scrollbar{width:3px;}.cs::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px;}
+    .cc{font-size:8px;font-weight:900;letter-spacing:3px;text-transform:uppercase;color:var(--muted);padding:6px 4px 3px;}
+    .cb-btn{width:100%;text-align:left;padding:10px 12px;border-radius:10px;background:transparent;border:2px solid var(--border);margin-bottom:5px;display:flex;align-items:center;gap:7px;font-family:inherit;font-size:12px;font-weight:600;color:var(--text);transition:.2s;cursor:pointer;}
+    .cb-btn:hover{border-color:var(--primary);background:var(--pl);}
+    .cb-btn svg{width:13px;height:13px;color:var(--primary);flex-shrink:0;}
+
+    /* PURPOSE */
+    .pu-hdr{display:flex;flex-direction:column;align-items:center;gap:4px;padding:18px 16px 14px;background:var(--pl);}
+    .pu-av{width:48px;height:48px;border-radius:50%;background:linear-gradient(135deg,var(--primary),var(--accent));display:flex;align-items:center;justify-content:center;font-weight:700;font-size:18px;color:#fff;overflow:hidden;}
+    .pu-av img{width:100%;height:100%;object-fit:cover;border-radius:50%;}
+    .pu-name{font-size:16px;font-weight:700;}
+    .pu-sub{font-size:10px;color:var(--muted);}
+    .pgrid{display:grid;grid-template-columns:1fr 1fr;gap:8px;padding:16px 16px 4px;}
+    .pbtn{height:82px;border-radius:14px;background:transparent;border:2px solid var(--border);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;transition:.2s;cursor:pointer;}
+    .pbtn:hover:not(:disabled){border-color:var(--primary);background:var(--pl);}
+    .pbtn:disabled{opacity:.4;cursor:not-allowed;}
+    .pbtn .pl{font-size:7px;font-weight:900;text-transform:uppercase;letter-spacing:1.5px;color:rgba(57,96,171,.5);}
+    .pbtn .pn{font-size:12px;font-weight:700;text-align:center;padding:0 4px;}
+
+    /* BLOCKED */
+    .blocked-body{padding:32px 28px;text-align:center;}
+    .blocked-icon{width:66px;height:66px;border-radius:50%;background:var(--dest);display:flex;align-items:center;justify-content:center;margin:0 auto 13px;box-shadow:0 8px 20px rgba(239,68,68,.25);}
+    .blocked-icon svg{width:34px;height:34px;color:#fff;}
+    .blocked-body h2{font-size:21px;font-weight:700;color:var(--dest);margin-bottom:7px;}
+    .blocked-body p{font-size:12px;color:#475569;line-height:1.6;margin-bottom:16px;}
+
+    /* SUCCESS */
+    .sc{position:relative;}
+    .success-body{padding:42px 30px 42px;text-align:center;background:linear-gradient(to bottom,#f0fdf4,#fff);}
+    .success-body::before{content:'';position:absolute;top:0;left:0;right:0;height:4px;background:var(--success);}
+    .success-ring{width:92px;height:92px;border-radius:50%;background:var(--success);display:flex;align-items:center;justify-content:center;margin:0 auto 16px;box-shadow:0 8px 24px rgba(16,185,129,.3);animation:popIn .4s cubic-bezier(.175,.885,.32,1.275);}
+    @keyframes popIn{from{transform:scale(0)}to{transform:scale(1)}}
+    .success-ring svg{width:50px;height:50px;color:#fff;}
+    .success-body h2{font-size:25px;font-weight:700;color:#14532d;letter-spacing:-1px;margin-bottom:3px;}
+    .success-name{font-size:17px;font-weight:700;color:#15803d;margin-bottom:3px;}
+    .success-sub{font-size:12px;color:#16a34a;font-weight:500;margin-bottom:26px;}
+    .success-btns{display:flex;flex-direction:column;align-items:center;gap:8px;max-width:240px;margin:0 auto;}
+    .btn-fin{display:flex;align-items:center;justify-content:center;gap:7px;width:100%;padding:12px;font-size:13px;font-weight:700;border-radius:12px;background:var(--primary);color:#fff;border:none;cursor:pointer;transition:.2s;text-decoration:none;}
+    .btn-fin:hover{background:#2d4f91;}
+    .btn-reset{background:transparent;border:none;color:rgba(22,101,52,.35);font-family:inherit;font-size:11px;cursor:pointer;padding:5px;transition:.2s;}
+    .btn-reset:hover{color:#166534;}
+
+    /* SPINNER */
+    .spin{display:inline-block;width:14px;height:14px;border:2px solid rgba(57,96,171,.18);border-top-color:var(--primary);border-radius:50%;animation:spin .6s linear infinite;flex-shrink:0;}
+    @keyframes spin{to{transform:rotate(360deg);}}
+.btn-google-t{display:flex;align-items:center;justify-content:center;gap:9px;width:100%;background:#fff;border:1.5px solid var(--border);border-radius:50px;padding:13px 18px;font-family:'Space Grotesk',sans-serif;font-size:14px;font-weight:600;color:var(--text);cursor:pointer;transition:.2s;box-shadow:0 1px 3px rgba(0,0,0,.06);}
+    .btn-google-t:hover:not(:disabled){box-shadow:0 3px 12px rgba(57,96,171,.15);border-color:#b0bfd4;}
+    .btn-google-t:disabled{opacity:.6;cursor:not-allowed;}
+        .hidden{display:none!important;}
+    .toast{position:fixed;bottom:16px;left:50%;transform:translateX(-50%);background:#1e293b;color:#fff;padding:9px 18px;border-radius:9px;font-size:11px;font-weight:500;z-index:999;opacity:0;transition:opacity .25s;pointer-events:none;max-width:90vw;text-align:center;}
+    .toast.show{opacity:1;} .toast.err{background:#7f1d1d;border:1px solid var(--dest);}
+  </style>
+</head>
+<body>
+
+<header>
+  <div class="hbrand">
+    <div class="hlogo">NEU</div>
+    <span class="htitle">NEU</span>
+  </div>
+  <div class="hright">
+    <div class="sem-badge" id="semBadge">2024–2025 · 1st Sem</div>
+    <div class="hchip" id="hdrChip">
+      <div class="hchip-av" id="hdrAv"></div>
+      <span class="hchip-name" id="hdrName"></span>
+      <button class="btn-hso" onclick="doSignOut()" title="Sign out">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+      </button>
+    </div>
+    <a href="index.html" class="btn-hlink hidden" id="btnSwitchRole" onclick="Auth.clearActiveRole()">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m17 1 4 4-4 4"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><path d="m7 23-4-4 4-4"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg>
+      Switch Role
+    </a>
+    <a href="admin.html" class="btn-hlink hidden" id="btnAdminLink">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><path d="M14 14h3v3M17 14h3M14 17h3v3"/></svg>
+      Admin
+    </a>
+  </div>
+</header>
+
+<main>
+
+  <!-- WELCOME -->
+  <div class="card step active" id="stepWelcome">
+    <div class="card-bar"></div>
+    <div class="wb">
+      <div class="scan-anim"><div class="r1"></div><div class="r2"></div>
+        <div class="iw"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 6v16l7-4 8 4 7-4V2l-7 4-8-4-7 4z"/><path d="M8 2v16M16 6v16"/></svg></div>
+      </div>
+      <h2>Tap to Enter</h2>
+      <p>Place your NEU School ID on the scanner.</p>
+      <div class="scan-ready">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
+        <strong>Ready to Scan…</strong>
+      </div>
+      <div class="or-line">Other Methods</div>
+      <div class="mgrid">
+        <button class="mbtn" onclick="goTo('stepManual')">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+          <span>Manual ID</span>
+        </button>
+        <button class="mbtn" onclick="goTo('stepGoogle')">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4M10 17l5-5-5-5M13 12H3"/></svg>
+          <span>NEU Sign-In</span>
+        </button>
+        <button class="mbtn" onclick="goTo('stepType')">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>
+          <span>Walk-in</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MANUAL ID -->
+  <div class="card step hidden" id="stepManual">
+    <div class="card-bar"></div>
+    <div class="sb">
+      <div class="shd"><h2>Manual Entry</h2><p>Enter your NEU School ID number</p></div>
+      <input class="big-input" id="manualId" placeholder="00-0000" autocomplete="off"/>
+      <div class="btn2">
+        <button class="btn btn-s" onclick="goTo('stepWelcome')">Cancel</button>
+        <button class="btn btn-p" onclick="handleManualID()">Verify ID</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- GOOGLE SIGN-IN -->
+  <div class="card step hidden" id="stepGoogle">
+    <div class="card-bar"></div>
+    <div class="gsb">
+      <div class="gsb-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4M10 17l5-5-5-5M13 12H3"/></svg></div>
+      <h2>NEU Account Sign-In</h2>
+      <p>Click the button below — no typing needed.</p>
+      <div class="gsi-wrap">
+        <button class="btn-google-t" id="btnGoogleT" onclick="handleGoogleSignIn()">
+          <svg width="18" height="18" viewBox="0 0 24 24"><path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/><path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/><path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/><path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/></svg>
+          Sign in with Google
+        </button>
+      </div>
+      <p class="gsb-error" id="gsbError"></p>
+      <p class="gsb-note">
+        Use your <strong style="color:var(--primary);">&#64;neu.edu.ph</strong> account only.
+        <span class="denied">&#64;gmail.com accounts are not allowed.</span>
+      </p>
+      <button class="btn-ghost" style="margin-top:14px;" onclick="goTo('stepWelcome')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m15 18-6-6 6-6"/></svg>Back
+      </button>
+    </div>
+  </div>
+
+  <!-- TYPE -->
+  <div class="card step hidden" id="stepType">
+    <div class="card-bar"></div>
+    <div class="sb">
+      <div class="shd"><h2>Who are you?</h2><p>Select your institutional role</p></div>
+      <div class="tgrid">
+        <button class="tbtn cb" onclick="pickType('Student')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 10v6M2 10l10-5 10 5-10 5z"/><path d="M6 12v5c3 3 9 3 12 0v-5"/></svg><span>Student</span></button>
+        <button class="tbtn ct" onclick="pickType('Faculty')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg><span>Faculty</span></button>
+        <button class="tbtn cg" onclick="pickType('Staff')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M20 21a8 8 0 1 0-16 0"/></svg><span>Staff</span></button>
+        <button class="tbtn co" onclick="pickType('Alumni')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 10v6M2 10l10-5 10 5-10 5z"/><path d="M6 12v5c3 3 9 3 12 0v-5"/></svg><span>Alumni</span></button>
+      </div>
+      <button class="btn-ghost" onclick="goTo('stepWelcome')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m15 18-6-6 6-6"/></svg>Back</button>
+    </div>
+  </div>
+
+  <!-- AFFILIATION -->
+  <div class="card step hidden" id="stepAffiliation">
+    <div class="card-bar"></div>
+    <div class="sb" style="padding-bottom:4px;">
+      <div class="shd"><h2>Your Department</h2><p>Choose your NEU College or Office</p></div>
+      <div class="sw"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+        <input class="si" id="collegeSearch" placeholder="Search department…" oninput="renderColleges()"/>
+      </div>
+      <div class="cs" id="collegeList"></div>
+      <button class="btn-ghost" style="margin:4px 0 6px;" onclick="goTo('stepType')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m15 18-6-6 6-6"/></svg>Change Role</button>
+    </div>
+  </div>
+
+  <!-- PURPOSE -->
+  <div class="card step hidden" id="stepPurpose">
+    <div class="card-bar"></div>
+    <div class="pu-hdr">
+      <div class="pu-av" id="puAv">V</div>
+      <div class="pu-name" id="puName">Visitor</div>
+      <div class="pu-sub" id="puSub">—</div>
+    </div>
+    <div class="pgrid" id="pgrid"></div>
+    <div style="padding:0 16px 12px;">
+      <button class="btn-ghost" onclick="resetTerminal()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m15 18-6-6 6-6"/></svg>Not You? Reset</button>
+    </div>
+  </div>
+
+  <!-- BLOCKED -->
+  <div class="card step hidden" id="stepBlocked">
+    <div class="card-bar" style="background:var(--dest)"></div>
+    <div class="blocked-body">
+      <div class="blocked-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg></div>
+      <h2>Access Denied</h2>
+      <p>Your account has been blocked. Please proceed to the Admin Desk for assistance.</p>
+      <button class="btn btn-s" style="width:100%;border-radius:10px;height:44px;" onclick="resetTerminal()">Back to Terminal</button>
+    </div>
+  </div>
+
+  <!-- SUCCESS -->
+  <div class="card sc step hidden" id="stepSuccess">
+    <div class="success-body">
+      <div class="success-ring"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M20 6 9 17l-5-5"/></svg></div>
+      <h2>Welcome to NEU Library!</h2>
+      <p class="success-name" id="successName"></p>
+      <p class="success-sub">Your visit has been recorded successfully.</p>
+      <div class="success-btns" id="successBtns"></div>
+    </div>
+  </div>
+
+</main>
+<div class="toast" id="toast"></div>
+
+<script src="data.js"></script>
+<script src="auth.js"></script>
+<script>
+const COLLEGES = {
+  "Undergraduate Colleges":["College of Accountancy","College of Agriculture","College of Arts and Sciences","College of Business Administration","College of Communication","College of Informatics and Computing Studies","College of Criminology","College of Education","College of Engineering and Architecture","College of Medical Technology","College of Midwifery","College of Music","College of Nursing","College of Physical Therapy","College of Respiratory Therapy"],
+  "Professional and Graduate Schools":["College of Law","College of Medicine","School of International Relations","School of Graduate Studies"]
+};
+
+let _step='stepWelcome', _userName='', _userPhoto=null, _userType=null, _affil='', _rfid='', _sess=null, _cdInt=null;
+
+const settings = DB.getSettings();
+document.getElementById('semBadge').textContent = `${settings.schoolYear||'2024-2025'} · ${settings.semester||'1st'} Sem`;
+
+// ── RESTORE SESSION ──────────────────────────────────────────
+_sess = Auth.getSession();
+if (_sess) applySession(_sess);
+
+function applySession(sessOrFbUser) {
+  // Accept both plain session objects and Firebase user objects
+  const sess = sessOrFbUser.uid
+    ? Auth.saveSession(sessOrFbUser)
+    : sessOrFbUser;
+  _sess = sess;
+  const av = document.getElementById('hdrAv');
+  if (sess.photo) av.innerHTML = `<img src="${sess.photo}" referrerpolicy="no-referrer" alt="">`;
+  else av.textContent = sess.name.charAt(0).toUpperCase();
+  document.getElementById('hdrName').textContent = sess.name;
+  document.getElementById('hdrChip').classList.add('show');
+  const isA = Auth.isAdmin(sess.email);
+  document.getElementById('btnSwitchRole').classList.toggle('hidden', !isA);
+  document.getElementById('btnAdminLink').classList.toggle('hidden', !isA);
+  _userName  = sess.name;
+  _userPhoto = sess.photo;
+  const dbUser = (_sess ? DB.getUserByID(_sess.uid||('gsi_'+(_sess.email||'').replace(/[@.]/g,'_'))) : null);
+  if (dbUser) { _affil = dbUser.affiliation||''; _userType = dbUser.userType||'Faculty'; }
+}
+
+// ── RFID ────────────────────────────────────────────────────
+let _rfidBuf='', _rfidTs=0;
+document.addEventListener('keydown', e=>{
+  if(e.target instanceof HTMLInputElement) return;
+  const now=Date.now(); if(now-_rfidTs>100) _rfidBuf=''; _rfidTs=now;
+  if(e.key==='Enter'){if(_rfidBuf.length>=4)processID(_rfidBuf.trim());_rfidBuf='';}
+  else if(e.key.length===1) _rfidBuf+=e.key;
+});
+const _urlRFID = new URLSearchParams(location.search).get('rfid');
+if (_urlRFID) setTimeout(() => processID(_urlRFID), 250);
+
+// Handle Google redirect result on terminal
+Auth.getRedirectResult && Auth.getRedirectResult().then(result => {
+  localStorage.removeItem('neu_terminal_redirect');
+  if (!result || !result.user) return;
+  const fbUser = result.user;
+  if (!Auth.isNEUEmail(fbUser.email)) { Auth.signOut(); showToast('@gmail.com not allowed', true); return; }
+  Auth.saveSession(fbUser);
+  Auth.ensureUserRecord(fbUser);
+  applySession(fbUser);
+  _rfid = '';
+  const dbUser = DB.getUserByID(fbUser.uid);
+  if (dbUser?.isBlocked) { goTo('stepBlocked'); return; }
+  if (dbUser?.affiliation) { fillPurpose(); goTo('stepPurpose'); }
+  else goTo('stepType');
+}).catch(e => console.error('terminal redirect result:', e));
+
+// ── STEP NAV ────────────────────────────────────────────────
+function goTo(id) {
+  document.getElementById(_step).classList.remove('active');
+  document.getElementById(_step).classList.add('hidden');
+  document.getElementById(id).classList.remove('hidden');
+  document.getElementById(id).classList.add('active');
+  _step = id;
+  if (id==='stepManual') setTimeout(()=>document.getElementById('manualId').focus(),70);
+  if (id==='stepAffiliation'){renderColleges();document.getElementById('collegeSearch').value='';}
+}
+
+// ── FIREBASE GOOGLE SIGN-IN ON TERMINAL ─────────────────────
+async function handleGoogleSignIn() {
+  const btn = document.getElementById('btnGoogleT');
+  btn.disabled = true;
+  btn.innerHTML = '<div class="spin"></div> Redirecting to Google…';
+  const errEl = document.getElementById('gsbError');
+  errEl.style.display = 'none';
+  // Save current terminal state so we can resume after redirect
+  localStorage.setItem('neu_terminal_redirect', '1');
+  try {
+    await Auth.signIn(); // redirects to Google — page reloads on return
+    return;
+    const result = null;
+    const fbUser = result ? result.user : null;
+    if (!Auth.isNEUEmail(fbUser.email)) {
+      await Auth.signOut();
+      errEl.textContent = '&#64;gmail.com accounts are not allowed. Use your @neu.edu.ph account.';
+      errEl.style.display = 'block';
+      resetGoogleBtn(); return;
+    }
+    Auth.saveSession(fbUser);
+    Auth.ensureUserRecord(fbUser);
+    const dbUser = DB.getUserByID(fbUser.uid);
+    if (dbUser?.isBlocked) { await Auth.signOut(); goTo('stepBlocked'); return; }
+    applySession(fbUser);
+    _rfid = '';
+    if (dbUser?.affiliation) { fillPurpose(); goTo('stepPurpose'); }
+    else goTo('stepType');
+  } catch (err) {
+    if (err.code !== 'auth/popup-closed-by-user' && err.code !== 'auth/cancelled-popup-request') {
+      errEl.textContent = 'Sign-in failed. Please try again.';
+      errEl.style.display = 'block';
+    }
+    resetGoogleBtn();
+  }
+}
+function resetGoogleBtn() {
+  const btn = document.getElementById('btnGoogleT');
+  btn.disabled = false;
+  btn.innerHTML = '<svg width="18" height="18" viewBox="0 0 24 24"><path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/><path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/><path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/><path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/></svg>Sign in with Google';
+}
+
+// ── PROCESS ID ──────────────────────────────────────────────
+function processID(code) {
+  if (_step==='stepSuccess') return;
+  _rfid=code;
+  const u=DB.getUserByRFID(code)||DB.getUserBySchoolId(code);
+  if (!u){showToast('ID not recognised — please register with Admin.',true);return;}
+  if (u.isBlocked){goTo('stepBlocked');return;}
+  _userName=u.name; _userPhoto=u.photoURL||null;
+  _affil=u.userAffiliation||u.affiliation||''; _userType=u.userType;
+  fillPurpose(); goTo('stepPurpose');
+}
+
+document.getElementById('manualId').addEventListener('keydown',e=>{if(e.key==='Enter')handleManualID();});
+function handleManualID(){
+  const v=document.getElementById('manualId').value.trim();
+  if(!v){showToast('Please enter your ID.',true);return;}
+  processID(v);
+}
+
+function pickType(t){_userType=t;goTo('stepAffiliation');}
+
+function renderColleges(){
+  const q=document.getElementById('collegeSearch').value.toLowerCase();
+  let html='';
+  Object.entries(COLLEGES).forEach(([cat,list])=>{
+    const f=list.filter(c=>c.toLowerCase().includes(q));
+    if(!f.length)return;
+    html+=`<div class="cc">${cat}</div>`;
+    f.forEach(c=>{html+=`<button class="cb-btn" onclick="pickCollege('${c.replace(/'/g,"\\'")}')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>${c}</button>`;});
+  });
+  document.getElementById('collegeList').innerHTML=html||'<p style="text-align:center;padding:16px;color:var(--muted);font-size:11px;">No results.</p>';
+}
+function pickCollege(c){_affil=c;fillPurpose();goTo('stepPurpose');}
+
+function fillPurpose(){
+  const av=document.getElementById('puAv');
+  if(_userPhoto) av.innerHTML=`<img src="${_userPhoto}" alt="">`;
+  else av.textContent=(_userName||'V').split(' ').map(w=>w[0]).join('').substring(0,2).toUpperCase();
+  document.getElementById('puName').textContent=_userName||'Visitor';
+  document.getElementById('puSub').textContent=[_affil,_userType].filter(Boolean).join(' • ')||'—';
+  const purposes=DB.getSettings().purposes||['Reading Books','Research in Thesis','Use of Computer','Doing Assignments'];
+  document.getElementById('pgrid').innerHTML=purposes.map(p=>
+    `<button class="pbtn" onclick="submitLog('${p.replace(/'/g,"\\'")}')"><span class="pl">Library Activity</span><span class="pn">${p}</span></button>`
+  ).join('');
+}
+
+function submitLog(purpose){
+  document.querySelectorAll('.pbtn').forEach(b=>b.disabled=true);
+  const uid=_sess?(_sess.uid||_sess.email):(_rfid?`rfid_${_rfid}`:'walkin');
+  DB.addLog({userId:uid,userName:_userName||(_rfid?`ID: ${_rfid}`:'Visitor'),userAffiliation:_affil,userType:_userType||'Student',rfidTagNumber:_rfid||null,purposeOfVisit:purpose,schoolYear:settings.schoolYear||'2024-2025',semester:settings.semester||'1st'});
+
+  document.getElementById('successName').textContent=_userName?`Hello, ${_userName}!`:'';
+  const isA=_sess&&Auth.isAdmin(_sess.email);
+  document.getElementById('successBtns').innerHTML=isA
+    ?`<a href="admin.html" class="btn-fin"><svg style="width:15px;height:15px;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><path d="M14 14h3v3M17 14h3M14 17h3v3"/></svg>Open Admin Dashboard</a><button class="btn-reset" id="resetBtn" onclick="resetTerminal()">Exit &amp; Reset (10s)</button>`
+    :`<button class="btn-fin" onclick="location.href='index.html'"><svg style="width:15px;height:15px;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>Finish</button><button class="btn-reset" id="resetBtn" onclick="resetTerminal()">Exit &amp; Reset (10s)</button>`;
+
+  goTo('stepSuccess');
+  startCountdown(10);
+}
+
+function startCountdown(s){
+  clearInterval(_cdInt);let rem=s;
+  _cdInt=setInterval(()=>{rem--;const b=document.getElementById('resetBtn');if(b)b.textContent=`Exit & Reset (${rem}s)`;if(rem<=0){clearInterval(_cdInt);resetTerminal();}},1000);
+}
+function resetTerminal(){
+  clearInterval(_cdInt);_userName='';_userPhoto=null;_userType=null;_affil='';_rfid='';
+  document.getElementById('manualId').value='';
+  history.replaceState(null,'','terminal.html');
+  goTo('stepWelcome');
+}
+function doSignOut(){Auth.signOut();location.href='index.html';}
+function showToast(msg,err=false){const t=document.getElementById('toast');t.textContent=msg;t.className='toast show'+(err?' err':'');clearTimeout(t._t);t._t=setTimeout(()=>t.classList.remove('show'),3200);}
+</script>
+</body>
+</html>
