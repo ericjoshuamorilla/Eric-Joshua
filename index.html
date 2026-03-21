@@ -1,0 +1,675 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>NEU Library — Visitor Log</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <!-- Firebase SDKs (compat) -->
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+  <style>
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+    :root{
+      --primary:#3960AB;--pl:rgba(57,96,171,.1);--pl2:rgba(57,96,171,.06);
+      --accent:#3CC2DD;--al:rgba(60,194,221,.12);
+      --bg:#E8EDF4;--card:#fff;--border:#D9E2EE;
+      --text:#1a2642;--muted:#64748b;--muted-bg:#f1f5f9;
+      --dest:#ef4444;--dest-l:rgba(239,68,68,.08);
+      --sh:0 1px 3px rgba(0,0,0,.08),0 4px 12px rgba(57,96,171,.06);
+      --sh-lg:0 4px 24px rgba(57,96,171,.12),0 1px 4px rgba(0,0,0,.06);
+    }
+    html,body{min-height:100%;font-family:'Space Grotesk',sans-serif;background:var(--bg);color:var(--text);}
+    a{text-decoration:none;color:inherit;}button{font-family:inherit;cursor:pointer;}
+    .page{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:32px 24px;}
+    .inner{max-width:880px;width:100%;display:grid;grid-template-columns:1fr 1fr;gap:52px;align-items:center;}
+    @media(max-width:700px){.inner{grid-template-columns:1fr;gap:32px;}.rc{order:-1;}}
+    /* brand */
+    .brand{display:flex;align-items:center;gap:18px;margin-bottom:18px;}
+    .neu-badge{width:76px;height:76px;background:var(--primary);border-radius:18px;display:flex;align-items:center;justify-content:center;font-size:24px;font-weight:700;color:#fff;letter-spacing:-1px;flex-shrink:0;box-shadow:0 4px 18px rgba(57,96,171,.35);}
+    .brand-text h1{font-size:58px;font-weight:700;color:var(--primary);letter-spacing:-3px;line-height:1;}
+    .brand-text p{font-size:16px;color:var(--muted);font-weight:500;margin-top:2px;}
+    .tagline{font-size:13px;color:var(--muted);max-width:320px;line-height:1.65;margin-bottom:22px;}
+    /* RFID */
+    .rfid-box{background:var(--pl);border:2px dashed rgba(57,96,171,.22);border-radius:18px;padding:16px 20px;display:flex;align-items:center;gap:12px;margin-bottom:24px;animation:rfidP 2.5s ease-in-out infinite;}
+    @keyframes rfidP{0%,100%{background:var(--pl);}50%{background:rgba(57,96,171,.15);}}
+    .rfid-icon{width:42px;height:42px;background:rgba(57,96,171,.12);border-radius:10px;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+    .rfid-icon svg{width:20px;height:20px;color:var(--primary);}
+    .rfid-box h3{font-size:12px;font-weight:700;color:var(--primary);}
+    .rfid-box p{font-size:11px;color:var(--muted);margin-top:1px;}
+    /* sign-in box */
+    .signin-box{background:var(--card);border:1px solid var(--border);border-radius:20px;padding:22px;box-shadow:var(--sh);}
+    .sib-label{font-size:11px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--muted);margin-bottom:14px;display:block;}
+    .sib-error{font-size:11px;color:var(--dest);background:var(--dest-l);border:1px solid rgba(239,68,68,.2);border-radius:8px;padding:8px 12px;margin-bottom:10px;display:none;line-height:1.5;}
+    /* Google sign-in button */
+    .btn-google{display:flex;align-items:center;justify-content:center;gap:10px;width:100%;background:#fff;border:1.5px solid var(--border);border-radius:50px;padding:13px 20px;font-family:'Space Grotesk',sans-serif;font-size:14px;font-weight:600;color:var(--text);cursor:pointer;transition:all .2s;box-shadow:0 1px 3px rgba(0,0,0,.08);margin-bottom:12px;}
+    .btn-google:hover:not(:disabled){box-shadow:var(--sh-lg);border-color:#b0c4d8;}
+    .btn-google:disabled{opacity:.65;cursor:not-allowed;}
+    .sib-note{font-size:11px;color:var(--muted);line-height:1.55;text-align:center;}
+    .sib-note strong{color:var(--primary);}
+    .sib-note .denied{color:var(--dest);}
+    /* loading */
+    .loading-row{display:flex;align-items:center;gap:8px;color:var(--muted);font-size:12px;padding:4px 0;}
+    .spin{display:inline-block;width:14px;height:14px;border:2px solid rgba(57,96,171,.2);border-top-color:var(--primary);border-radius:50%;animation:spin .6s linear infinite;flex-shrink:0;}
+    @keyframes spin{to{transform:rotate(360deg);}}
+    /* user card */
+    .user-card{display:flex;align-items:center;gap:12px;background:var(--card);border-radius:16px;padding:12px 15px;box-shadow:var(--sh);border:1px solid var(--border);margin-bottom:16px;}
+    .uav{width:42px;height:42px;border-radius:50%;background:linear-gradient(135deg,var(--primary),var(--accent));display:flex;align-items:center;justify-content:center;font-weight:700;font-size:16px;color:#fff;flex-shrink:0;overflow:hidden;}
+    .uav img{width:100%;height:100%;object-fit:cover;border-radius:50%;}
+    .umeta{flex:1;min-width:0;}
+    .umeta strong{font-size:13px;font-weight:600;display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+    .umeta em{font-size:11px;color:var(--muted);font-style:normal;display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+    .admin-pill{display:inline-flex;align-items:center;gap:3px;font-size:9px;font-weight:700;color:var(--primary);text-transform:uppercase;letter-spacing:.5px;background:var(--pl);padding:2px 7px;border-radius:50px;margin-top:3px;}
+    .admin-pill svg{width:9px;height:9px;}
+    .btn-so{background:transparent;border:none;padding:6px;border-radius:7px;color:var(--muted);cursor:pointer;transition:.15s;flex-shrink:0;}
+    .btn-so:hover{color:var(--dest);background:var(--dest-l);}
+    .btn-so svg{width:15px;height:15px;display:block;}
+    /* role picker */
+    .rp-heading{font-size:10px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted);margin-bottom:10px;}
+    .role-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+    .role-card{padding:18px 10px 15px;border-radius:16px;border:2px solid var(--border);background:transparent;display:flex;flex-direction:column;align-items:center;gap:8px;cursor:pointer;transition:all .2s;text-align:center;}
+    .role-card:hover{border-color:var(--primary);background:var(--pl);}
+    .rci{width:44px;height:44px;border-radius:12px;background:var(--pl2);display:flex;align-items:center;justify-content:center;}
+    .rci svg{width:24px;height:24px;color:var(--primary);}
+    .role-card strong{font-size:13px;font-weight:700;}
+    .role-card span{font-size:10px;color:var(--muted);line-height:1.4;}
+    .btn-terminal{display:flex;align-items:center;justify-content:center;gap:8px;background:var(--primary);color:#fff;border:none;border-radius:50px;padding:13px 26px;font-family:'Space Grotesk',sans-serif;font-size:14px;font-weight:600;cursor:pointer;transition:all .2s;text-decoration:none;box-shadow:0 2px 12px rgba(57,96,171,.3);}
+    .btn-terminal:hover{background:#2d4f91;box-shadow:0 4px 18px rgba(57,96,171,.4);}
+    .btn-terminal svg{width:17px;height:17px;}
+    /* feature cards */
+    .rc{display:flex;flex-direction:column;gap:14px;}
+    .feat-card{background:var(--card);border-radius:20px;padding:22px;box-shadow:var(--sh-lg);border:1px solid var(--border);transition:.2s;}
+    .feat-card:hover{transform:translateY(-2px);box-shadow:0 8px 32px rgba(57,96,171,.14);}
+    .fi{width:46px;height:46px;border-radius:12px;display:flex;align-items:center;justify-content:center;margin-bottom:12px;}
+    .fi.blue{background:var(--pl);}.fi.blue svg{color:var(--primary);}
+    .fi.teal{background:var(--al);}.fi.teal svg{color:var(--accent);}
+    .fi svg{width:22px;height:22px;}
+    .feat-card h3{font-size:15px;font-weight:700;margin-bottom:5px;}
+    .feat-card p{font-size:12px;color:var(--muted);line-height:1.5;}
+    .hidden{display:none!important;}
+    .toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:#1e293b;color:#fff;padding:10px 22px;border-radius:10px;font-size:12px;font-weight:500;z-index:999;opacity:0;transition:opacity .25s;pointer-events:none;max-width:90vw;text-align:center;}
+    .toast.show{opacity:1;}.toast.err{background:#7f1d1d;border:1px solid #ef4444;}
+  </style>
+</head>
+<body>
+<div class="page"><div class="inner">
+
+  <!-- LEFT -->
+  <div>
+    <div class="brand">
+      <div class="neu-badge">NEU</div>
+      <div class="brand-text"><h1>NEU</h1><p>Library Visitor Log</p></div>
+    </div>
+    <p class="tagline">Streamlined visitor management and usage analytics for New Era University.</p>
+
+    <div class="rfid-box">
+      <div class="rfid-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 6v16l7-4 8 4 7-4V2l-7 4-8-4-7 4z"/><path d="M8 2v16M16 6v16"/></svg></div>
+      <div><h3>Tap your ID to enter</h3><p>RFID Scanning Always Active</p></div>
+    </div>
+
+    <!-- Loading -->
+    <div id="stateLoading" class="loading-row">
+      <div class="spin"></div><span>Checking session…</span>
+    </div>
+
+    <!-- Signed out -->
+    <div id="stateOut" class="hidden">
+      <div class="signin-box">
+        <span class="sib-label">Sign in with your NEU account</span>
+        <p class="sib-error" id="sibError"></p>
+        <button class="btn-google" id="btnSignIn" onclick="handleSignIn()">
+          <svg width="18" height="18" viewBox="0 0 24 24">
+            <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
+            <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
+            <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/>
+            <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/>
+          </svg>
+          Sign in with Google
+        </button>
+        <p class="sib-note">
+          Use your <strong>&#64;neu.edu.ph</strong> institutional account only.<br>
+          <span class="denied">&#64;gmail.com accounts are not allowed.</span>
+        </p>
+      </div>
+    </div>
+
+    <!-- Signed in -->
+    <div id="stateIn" class="hidden">
+      <div class="user-card">
+        <div class="uav" id="uAva"></div>
+        <div class="umeta">
+          <strong id="uName">—</strong>
+          <em id="uEmail">—</em>
+          <span class="admin-pill hidden" id="adminPill">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+            Administrator
+          </span>
+        </div>
+        <button class="btn-so" onclick="handleSignOut()" title="Sign out">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+        </button>
+      </div>
+
+      <!-- Admin → role picker -->
+      <div id="rolePicker" class="hidden">
+        <p class="rp-heading">How would you like to continue?</p>
+        <div class="role-grid">
+          <button class="role-card" onclick="pickRole('user')">
+            <div class="rci"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg></div>
+            <strong>Regular User</strong>
+            <span>Check in to the library as a visitor</span>
+          </button>
+          <button class="role-card" onclick="pickRole('admin')">
+            <div class="rci"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="m9 12 2 2 4-4"/></svg></div>
+            <strong>Admin</strong>
+            <span>Manage users, view stats &amp; reports</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Regular user -->
+      <div id="userActions" class="hidden">
+        <a href="terminal.html" class="btn-terminal">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/></svg>
+          Go to Visitor Terminal
+        </a>
+      </div>
+    </div>
+  </div>
+
+  <!-- RIGHT -->
+  <div class="rc">
+    <div class="feat-card">
+      <div class="fi teal"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/></svg></div>
+      <h3>Smart Check-in</h3>
+      <p>Fast check-in for students and faculty using School ID, RFID, or NEU Google account.</p>
+    </div>
+    <div class="feat-card">
+      <div class="fi blue"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><path d="M14 14h3v3M17 14h3M14 17h3v3"/></svg></div>
+      <h3>Insights &amp; Data</h3>
+      <p>Detailed statistics, charts, and exportable PDF reports for administrators.</p>
+    </div>
+  </div>
+
+</div></div>
+<div class="toast" id="toast"></div>
+
+<script>
+// data.js inlined
+// data.js — NEU Library · Data Layer
+// localStorage (instant) + Firestore (persistent, cross-device)
+// Every visitor login, user record, and log is synced to Firebase Firestore.
+
+const DB = {
+  USERS_KEY:    'neu_lib_users',
+  LOGS_KEY:     'neu_lib_logs',
+  SETTINGS_KEY: 'neu_lib_settings',
+
+  _get(key) {
+    try { return JSON.parse(localStorage.getItem(key)) || []; } catch { return []; }
+  },
+  _set(key, val) {
+    try { localStorage.setItem(key, JSON.stringify(val)); } catch(e) {}
+  },
+
+  // ── FIRESTORE ─────────────────────────────────────────────
+  _db() {
+    try {
+      if (!window.firebase || !firebase.apps.length) return null;
+      return firebase.firestore();
+    } catch(e) { return null; }
+  },
+
+  // ── SETTINGS ──────────────────────────────────────────────
+  getSettings() {
+    try {
+      return JSON.parse(localStorage.getItem(this.SETTINGS_KEY)) || {
+        schoolYear:'2024-2025', semester:'1st',
+        openingTime:'08:00', closingTime:'21:00',
+        purposes:['Reading Books','Research in Thesis','Use of Computer','Doing Assignments']
+      };
+    } catch { return {schoolYear:'2024-2025',semester:'1st',openingTime:'08:00',closingTime:'21:00',purposes:['Reading Books','Research in Thesis','Use of Computer','Doing Assignments']}; }
+  },
+  saveSettings(s) {
+    localStorage.setItem(this.SETTINGS_KEY, JSON.stringify(s));
+    const db = this._db();
+    if (db) db.collection('settings').doc('main').set(s).catch(()=>{});
+  },
+
+  // ── USERS ─────────────────────────────────────────────────
+  getUsers() { return this._get(this.USERS_KEY); },
+  saveUsers(u) { this._set(this.USERS_KEY, u); },
+  getUserByRFID(rfid) { return this.getUsers().find(u => u.rfidTagNumber === rfid.trim()) || null; },
+  getUserBySchoolId(id) { return this.getUsers().find(u => u.schoolId === id.trim()) || null; },
+  getUserByID(id) { return this.getUsers().find(u => u.id === id) || null; },
+  getUserByEmail(email) { return this.getUsers().find(u => (u.institutionalEmail||'').toLowerCase() === (email||'').toLowerCase()) || null; },
+
+  upsertUser(user) {
+    const users = this.getUsers();
+    const idx = users.findIndex(u => u.id === user.id);
+    if (idx >= 0) users[idx] = { ...users[idx], ...user };
+    else users.push(user);
+    this.saveUsers(users);
+    // Sync to Firestore
+    const db = this._db();
+    if (db) db.collection('users').doc(user.id).set(user, {merge:true}).catch(()=>{});
+    return user;
+  },
+
+  toggleBlock(id) {
+    const users = this.getUsers();
+    const u = users.find(u => u.id === id);
+    if (u) {
+      u.isBlocked = !u.isBlocked;
+      this.saveUsers(users);
+      const db = this._db();
+      if (db) db.collection('users').doc(id).update({isBlocked: u.isBlocked}).catch(()=>{});
+    }
+    return u;
+  },
+
+  // ── VISIT LOGS ────────────────────────────────────────────
+  getLogs() { return this._get(this.LOGS_KEY); },
+  saveLogs(l) { this._set(this.LOGS_KEY, l); },
+
+  addLog(log) {
+    log.id        = 'log_' + Date.now() + '_' + Math.random().toString(36).slice(2,6);
+    log.timestamp = new Date().toISOString();
+    log.createdAt = log.timestamp;
+    // Save locally immediately
+    const logs = this.getLogs();
+    logs.unshift(log);
+    this.saveLogs(logs);
+    // Sync to Firestore
+    const db = this._db();
+    if (db) {
+      db.collection('visit_logs').doc(log.id).set(log)
+        .then(() => console.log('[DB] Visit synced:', log.userName))
+        .catch(e => console.warn('[DB] Firestore sync failed:', e.message));
+    }
+    return log;
+  },
+
+  getLogsInRange(start, end) {
+    return this.getLogs().filter(l => {
+      const t = new Date(l.timestamp); return t >= start && t <= end;
+    });
+  },
+
+  // ── LOAD FROM FIRESTORE (admin dashboard on load) ─────────
+  async loadFromFirestore() {
+    const db = this._db();
+    if (!db) { console.warn('[DB] Firestore not available'); return false; }
+    try {
+      // Load users
+      const uSnap = await db.collection('users').get();
+      if (!uSnap.empty) this.saveUsers(uSnap.docs.map(d => d.data()));
+
+      // Load recent logs
+      const lSnap = await db.collection('visit_logs')
+        .orderBy('timestamp','desc').limit(1000).get();
+      if (!lSnap.empty) this.saveLogs(lSnap.docs.map(d => d.data()));
+
+      // Load settings
+      const sSnap = await db.collection('settings').doc('main').get();
+      if (sSnap.exists) localStorage.setItem(this.SETTINGS_KEY, JSON.stringify(sSnap.data()));
+
+      console.log('[DB] Loaded from Firestore:', uSnap.size, 'users,', lSnap.size, 'logs');
+      return true;
+    } catch(e) {
+      console.warn('[DB] loadFromFirestore error:', e.message);
+      return false;
+    }
+  },
+
+  // ── REAL-TIME LISTENER (live dashboard updates) ────────────
+  listenToLogs(cb) {
+    const db = this._db();
+    if (!db) return ()=>{};
+    return db.collection('visit_logs').orderBy('timestamp','desc').limit(500)
+      .onSnapshot(snap => {
+        const logs = snap.docs.map(d => d.data());
+        this.saveLogs(logs);
+        if (cb) cb(logs);
+      }, e => console.warn('[DB] listenToLogs:', e.message));
+  },
+
+  listenToUsers(cb) {
+    const db = this._db();
+    if (!db) return ()=>{};
+    return db.collection('users')
+      .onSnapshot(snap => {
+        const users = snap.docs.map(d => d.data());
+        this.saveUsers(users);
+        if (cb) cb(users);
+      }, e => console.warn('[DB] listenToUsers:', e.message));
+  },
+
+  // ── IMPORT / EXPORT ───────────────────────────────────────
+  exportJSON() {
+    const data = {
+      exported_at: new Date().toISOString(), version:'2.0',
+      users: this.getUsers(), visit_logs: this.getLogs(), settings: this.getSettings()
+    };
+    const blob = new Blob([JSON.stringify(data,null,2)], {type:'application/json'});
+    const url  = URL.createObjectURL(blob);
+    const a    = document.createElement('a');
+    a.href = url;
+    a.download = `NEU-Library-${new Date().toISOString().slice(0,10)}.json`;
+    a.click(); URL.revokeObjectURL(url);
+  },
+
+  importJSON(file, cb) {
+    const reader = new FileReader();
+    reader.onload = e => {
+      try {
+        const data = JSON.parse(e.target.result);
+        if (data.users)      this.saveUsers(data.users);
+        if (data.visit_logs) this.saveLogs(data.visit_logs);
+        if (data.settings)   this.saveSettings(data.settings);
+        // Push to Firestore
+        const db = this._db();
+        if (db) {
+          const batch = db.batch();
+          (data.users||[]).forEach(u => batch.set(db.collection('users').doc(u.id), u));
+          (data.visit_logs||[]).slice(0,500).forEach(l => batch.set(db.collection('visit_logs').doc(l.id), l));
+          batch.commit().catch(()=>{});
+        }
+        cb(null, data);
+      } catch(err) { cb(err, null); }
+    };
+    reader.readAsText(file);
+  },
+
+  seedIfEmpty() {
+    if (this.getUsers().length > 0) return;
+    const cols = ['College of Accountancy','College of Business Administration','College of Informatics and Computing Studies','College of Engineering and Architecture','College of Nursing','College of Education','College of Arts and Sciences'];
+    const purposes = ['Reading Books','Research in Thesis','Use of Computer','Doing Assignments'];
+    const types = ['Student','Faculty','Staff','Alumni'];
+    const names = ['Maria Santos','Juan dela Cruz','Ana Reyes','Carlo Bautista','Liza Flores','Marco Garcia','Jenny Lim','Paolo Cruz','Christine Tan','Miguel Rivera'];
+    const users = names.map((name,i) => ({
+      id:`user_${String(i+1).padStart(3,'0')}`, name,
+      schoolId:`${20+(i%4)}-${String(1000+i).padStart(4,'0')}`,
+      rfidTagNumber:`NEU${String(10000+i).padStart(6,'0')}`,
+      institutionalEmail:name.toLowerCase().replace(/ /g,'.')+'@neu.edu.ph',
+      userType:types[i%types.length], affiliation:cols[i%cols.length],
+      role:'visitor', isBlocked:i===3
+    }));
+    this.saveUsers(users);
+    const logs = [];
+    for (let d=0;d<14;d++) {
+      for (let j=0;j<3+Math.floor(Math.random()*8);j++) {
+        const v=users[Math.floor(Math.random()*users.length)];
+        const date=new Date(); date.setDate(date.getDate()-d);
+        date.setHours(8+Math.floor(Math.random()*10),Math.floor(Math.random()*60));
+        logs.push({id:`log_seed_${d}_${j}`,userId:v.id,userName:v.name,userAffiliation:v.affiliation,userType:v.userType,rfidTagNumber:v.rfidTagNumber,purposeOfVisit:purposes[Math.floor(Math.random()*purposes.length)],schoolYear:'2024-2025',semester:'1st',timestamp:date.toISOString(),createdAt:date.toISOString()});
+      }
+    }
+    logs.sort((a,b)=>new Date(b.timestamp)-new Date(a.timestamp));
+    this.saveLogs(logs);
+  }
+};
+
+DB.seedIfEmpty();
+
+</script>
+<script>
+// auth.js inlined
+// ================================================================
+//  auth.js  —  NEU Library  |  Firebase Auth + Google Sign-In
+//  No password · No typing · Click → Google handles everything
+//  Only @neu.edu.ph accounts accepted · @gmail.com rejected
+// ================================================================
+//
+//  ⚠️  ONE-TIME SETUP — fill in your Firebase project values below.
+//
+//  How to get these values:
+//  1. Go to https://console.firebase.google.com
+//  2. Create a project (or open an existing one)
+//  3. Click the gear icon → Project Settings → Your apps
+//  4. Click the </> Web icon → register the app → copy the config
+//  5. In Firebase Console → Authentication → Sign-in method → enable Google
+//  6. In Firebase Console → Authentication → Settings → Authorized domains
+//     → Add your GitHub Pages domain  (e.g. yourusername.github.io)
+//
+// ================================================================
+
+const FIREBASE_CONFIG = {
+  apiKey:            "AIzaSyAHxgfWkXhOl-cFXrqvQAWC_SLkn_cJGS8",
+  authDomain:        "neulib-fc97e.firebaseapp.com",
+  projectId:         "neulib-fc97e",
+  storageBucket:     "neulib-fc97e.firebasestorage.app",
+  messagingSenderId: "992375306505",
+  appId:             "1:992375306505:web:ed6f114890a981c09ffbd8"
+};
+
+// ── Authorised admin accounts (both roles: user + admin) ─────
+const ADMIN_EMAILS = [
+  "jcesperanza@neu.edu.ph",
+  "ericjoshua.morilla@neu.edu.ph"
+];
+
+// ── Session keys ─────────────────────────────────────────────
+const _SK  = "neu_session";      // { uid, email, name, photo }
+const _ARK = "neu_active_role";  // "admin" | "user"
+
+// ── Firebase singleton ───────────────────────────────────────
+let _fbAuth = null;
+let _fbProvider = null;
+
+function _initFirebase() {
+  if (_fbAuth) return _fbAuth;
+  try {
+    const app = firebase.apps.length
+      ? firebase.app()
+      : firebase.initializeApp(FIREBASE_CONFIG);
+    _fbAuth = firebase.auth();
+    _fbProvider = new firebase.auth.GoogleAuthProvider();
+    // hd hint nudges Google's account picker to show @neu.edu.ph accounts first.
+    // We still do a hard domain check after sign-in.
+    _fbProvider.setCustomParameters({ hd: "neu.edu.ph", prompt: "select_account" });
+    return _fbAuth;
+  } catch (e) {
+    console.error("[Auth] Firebase init error:", e);
+    return null;
+  }
+}
+
+// ── Public Auth object ────────────────────────────────────────
+const Auth = {
+
+  // ── Domain / role checks ────────────────────────────────────
+
+  /** Returns true ONLY for @neu.edu.ph — @gmail.com → false */
+  isNEUEmail(email) {
+    return (email || "").toLowerCase().trim().endsWith("@neu.edu.ph");
+  },
+
+  /** Returns true if email is one of the two authorised admin accounts */
+  isAdmin(email) {
+    return ADMIN_EMAILS.includes((email || "").toLowerCase().trim());
+  },
+
+  // ── Firebase auth ───────────────────────────────────────────
+
+  /** Open Google Sign-In popup. Returns Firebase UserCredential. */
+  signIn() {
+    const auth = _initFirebase();
+    if (!auth) return Promise.reject(new Error("Firebase not ready. Check your config in auth.js."));
+    return auth.signInWithPopup(_fbProvider);
+  },
+
+  /** Get redirect result after signInWithRedirect completes. */
+  getRedirectResult() {
+    const auth = _initFirebase();
+    if (!auth) return Promise.resolve(null);
+    return auth.getRedirectResult();
+  },
+
+  /** Sign out of Firebase and clear local session. */
+  async signOut() {
+    const auth = _initFirebase();
+    if (auth) await auth.signOut().catch(() => {});
+    localStorage.removeItem(_SK);
+    localStorage.removeItem(_ARK);
+  },
+
+  /** Returns the current Firebase User, or null. */
+  currentUser() {
+    const auth = _initFirebase();
+    return auth ? auth.currentUser : null;
+  },
+
+  /** Subscribe to auth state changes. Returns unsubscribe fn. */
+  onAuthStateChanged(cb) {
+    const auth = _initFirebase();
+    if (!auth) { setTimeout(() => cb(null), 0); return () => {}; }
+    return auth.onAuthStateChanged(cb);
+  },
+
+  // ── Session helpers ─────────────────────────────────────────
+
+  saveSession(fbUser) {
+    const s = {
+      uid:   fbUser.uid,
+      email: fbUser.email,
+      name:  fbUser.displayName || fbUser.email.split("@")[0],
+      photo: fbUser.photoURL || null
+    };
+    localStorage.setItem(_SK, JSON.stringify(s));
+    return s;
+  },
+
+  getSession() {
+    try { return JSON.parse(localStorage.getItem(_SK)) || null; }
+    catch { return null; }
+  },
+
+  // ── Active role ─────────────────────────────────────────────
+
+  getActiveRole()   { return localStorage.getItem(_ARK) || null; },
+  setActiveRole(r)  { localStorage.setItem(_ARK, r); },
+  clearActiveRole() { localStorage.removeItem(_ARK); },
+
+  // ── Local DB sync ───────────────────────────────────────────
+
+  /** Ensure a localStorage user record exists for this Google account. */
+  ensureUserRecord(fbUser) {
+    if (typeof DB === "undefined") return null;
+    const existing = DB.getUserByID(fbUser.uid);
+    if (!existing) {
+      DB.upsertUser({
+        id:                 fbUser.uid,
+        name:               fbUser.displayName || fbUser.email.split("@")[0],
+        schoolId:           "",
+        rfidTagNumber:      "",
+        institutionalEmail: fbUser.email,
+        userType:           "Faculty",
+        affiliation:        "",
+        role:               Auth.isAdmin(fbUser.email) ? "admin" : "visitor",
+        isBlocked:          false,
+        photoURL:           fbUser.photoURL || null
+      });
+    } else {
+      let changed = false;
+      if (fbUser.displayName && existing.name     !== fbUser.displayName) { existing.name     = fbUser.displayName; changed = true; }
+      if (fbUser.photoURL    && existing.photoURL !== fbUser.photoURL)    { existing.photoURL = fbUser.photoURL;    changed = true; }
+      if (changed) DB.upsertUser(existing);
+    }
+    return DB.getUserByID(fbUser.uid);
+  }
+};
+
+</script>
+<script>
+// RFID global capture
+let _rfidBuf='',_rfidTs=0;
+document.addEventListener('keydown',e=>{
+  if(e.target instanceof HTMLInputElement)return;
+  const now=Date.now();if(now-_rfidTs>100)_rfidBuf='';_rfidTs=now;
+  if(e.key==='Enter'){if(_rfidBuf.length>=4)location.href=`terminal.html?rfid=${encodeURIComponent(_rfidBuf)}`;_rfidBuf='';}
+  else if(e.key.length===1)_rfidBuf+=e.key;
+});
+
+const $load = document.getElementById('stateLoading');
+const $out  = document.getElementById('stateOut');
+const $in   = document.getElementById('stateIn');
+
+// Firebase auth state listener — the single source of truth
+Auth.onAuthStateChanged(async fbUser => {
+  $load.classList.add('hidden');
+
+  if (!fbUser) {
+    $out.classList.remove('hidden');
+    return;
+  }
+
+  // Hard domain check — @gmail.com etc. get signed out immediately
+  if (!Auth.isNEUEmail(fbUser.email)) {
+    await Auth.signOut();
+    showErr('&#64;gmail.com and personal accounts are not allowed.\nUse your &#64;neu.edu.ph institutional account.');
+    $out.classList.remove('hidden');
+    return;
+  }
+
+  // Valid NEU account
+  Auth.saveSession(fbUser);
+  Auth.ensureUserRecord(fbUser);
+  renderSignedIn(fbUser);
+  // Do NOT auto-redirect — let user choose their role
+});
+
+async function handleSignIn() {
+  const btn = document.getElementById('btnSignIn');
+  btn.disabled = true;
+  btn.innerHTML = '<div class="spin"></div> Signing in…';
+  try {
+    await Auth.signIn();
+    // Page will redirect to Google — onAuthStateChanged fires when it comes back
+  } catch (err) {
+    btn.disabled = false;
+    btn.innerHTML = `<svg width="18" height="18" viewBox="0 0 24 24"><path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/><path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/><path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/><path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/></svg>Sign in with Google`;
+    showErr('Sign-in failed: ' + (err.message || err.code));
+  }
+}
+
+function renderSignedIn(fbUser) {
+  const av = document.getElementById('uAva');
+  if (fbUser.photoURL) av.innerHTML = `<img src="${fbUser.photoURL}" referrerpolicy="no-referrer" alt="">`;
+  else av.textContent = (fbUser.displayName || fbUser.email).charAt(0).toUpperCase();
+  document.getElementById('uName').textContent  = fbUser.displayName || fbUser.email.split('@')[0];
+  document.getElementById('uEmail').textContent = fbUser.email;
+  const isAdmin = Auth.isAdmin(fbUser.email);
+  document.getElementById('adminPill').classList.toggle('hidden', !isAdmin);
+  document.getElementById('rolePicker').classList.toggle('hidden', !isAdmin);
+  document.getElementById('userActions').classList.toggle('hidden', isAdmin);
+  $out.classList.add('hidden');
+  $in.classList.remove('hidden');
+}
+
+function pickRole(role) {
+  Auth.setActiveRole(role);
+  location.href = role === 'admin' ? 'admin.html' : 'terminal.html';
+}
+
+async function handleSignOut() {
+  await Auth.signOut();
+  $in.classList.add('hidden');
+  $out.classList.remove('hidden');
+  document.getElementById('sibError').style.display = 'none';
+  // Re-enable sign-in button
+  const btn = document.getElementById('btnSignIn');
+  btn.disabled = false;
+  btn.innerHTML = `<svg width="18" height="18" viewBox="0 0 24 24"><path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/><path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/><path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/><path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/></svg>Sign in with Google`;
+}
+
+function showErr(msg) {
+  const el = document.getElementById('sibError');
+  el.textContent = msg; el.style.display = 'block';
+}
+</script>
+</body>
+</html>
