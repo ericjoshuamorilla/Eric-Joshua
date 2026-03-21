@@ -36,8 +36,9 @@
     ::-webkit-scrollbar{width:5px;height:5px;}::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px;}
 
     /* ── APP LAYOUT ── */
-    #app{display:flex;height:100vh;}
-    /* app always visible — auth redirects if not admin */
+    #app{display:none;height:100vh;}
+    #app.show{display:flex;}
+    #app.show{display:flex;}
     .sidebar{width:240px;border-right:1px solid var(--border);background:var(--card);display:flex;flex-direction:column;flex-shrink:0;}
     .sb-logo{padding:24px 20px 18px;border-bottom:1px solid var(--border2);}
     .sb-logo a{display:flex;align-items:center;gap:10px;color:var(--primary);font-size:22px;font-weight:700;letter-spacing:-1px;}
@@ -825,42 +826,54 @@ const Auth = {
   const ALL_COLLEGES = [...COLLEGES_DATA["Undergraduate Colleges"], ...COLLEGES_DATA["Professional and Graduate Schools"]];
 
   // ── AUTH ─────────────────────────────────────────────────
-  // No login screen — sign in on index.html
-  // Step 1: instant localStorage check
-  let _authDone = false;
+  // Guard: only admins who signed in via index.html can see this page.
+  // Checks localStorage session instantly — no waiting, no flash.
 
   function _boot(sessOrUser) {
-    if (_authDone) return;
-    _authDone = true;
     const name  = sessOrUser.displayName || sessOrUser.name  || (sessOrUser.email||'').split('@')[0];
     const email = (sessOrUser.email || '').toLowerCase();
     const photo = sessOrUser.photoURL   || sessOrUser.photo  || null;
     const sess  = { uid: sessOrUser.uid || email, email, name, photo };
     localStorage.setItem('neu_session', JSON.stringify(sess));
+    localStorage.setItem('neu_active_role', 'admin');
     populateSidebarUser(sess);
-    initSettings();
-    loadStats();
-    renderUsers();
-    populateCollegeSelects();
+    showApp();
   }
 
+  // Check localStorage immediately (session was saved by index.html on sign-in)
+  let _booted = false;
   try {
     const _raw = localStorage.getItem('neu_session');
     const _s   = _raw ? JSON.parse(_raw) : null;
     if (_s && _s.email && Auth.isAdmin(_s.email)) {
+      _booted = true;
       _boot(_s);
     }
-  } catch(e) { console.error('[Admin] session parse:', e); }
+  } catch(e) { console.error('[Admin] session error:', e); }
 
-  // Step 2: Firebase auth state (covers direct URL access & persisted login)
+  // If no valid session in localStorage → redirect to index.html
+  if (!_booted) {
+    // Wait briefly for Firebase to restore session before giving up
+    setTimeout(() => {
+      if (!_booted) location.href = 'index.html';
+    }, 1500);
+  }
+
+  // Firebase background sync — keeps profile photo/name fresh
   Auth.onAuthStateChanged(async fbUser => {
-    if (fbUser && Auth.isNEUEmail(fbUser.email) && Auth.isAdmin(fbUser.email)) {
-      Auth.ensureUserRecord(fbUser);
+    if (!fbUser) return;
+    if (!Auth.isNEUEmail(fbUser.email) || !Auth.isAdmin(fbUser.email)) {
+      await Auth.signOut();
+      location.href = 'index.html';
+      return;
+    }
+    Auth.ensureUserRecord(fbUser);
+    if (!_booted) {
+      _booted = true;
       _boot(fbUser);
-    } else if (!_authDone) {
-      // Show loading indicator while Firebase checks session
-      document.body.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:100vh;flex-direction:column;gap:16px;font-family:Space Grotesk,sans-serif;background:#E8EDF4;"><div style="width:48px;height:48px;background:#3960AB;border-radius:12px;display:flex;align-items:center;justify-content:center;font-weight:700;color:#fff;font-size:16px;">NEU</div><div style="width:24px;height:24px;border:3px solid rgba(57,96,171,.2);border-top-color:#3960AB;border-radius:50%;animation:spin .7s linear infinite;"></div><p style="color:#64748b;font-size:13px;">Checking session...</p><style>@keyframes spin{to{transform:rotate(360deg)}}</style></div>';
-      setTimeout(() => { if (!_authDone) location.href = 'index.html'; }, 3000);
+    } else {
+      // Already showing dashboard — just update sidebar with fresh profile
+      populateSidebarUser(fbUser);
     }
   });
 
@@ -879,6 +892,7 @@ const Auth = {
 
 
   function showApp() {
+    document.getElementById('app').classList.add('show');
     try { initSettings(); } catch(e) { console.error('[showApp] initSettings:', e); }
     try { loadStats(); }    catch(e) { console.error('[showApp] loadStats:', e); }
     try { renderUsers(); }  catch(e) { console.error('[showApp] renderUsers:', e); }
